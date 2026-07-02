@@ -32,6 +32,6 @@ EXPOSE 5000
 # Healthcheck: Docker will ping this every 30s
 # If it fails 3 times, the container is marked unhealthy and restarted
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-  CMD wget -qO- http://localhost:5000/api/health || exit 1
+  CMD wget -qO- http://localhost:5000/api/v1/health || exit 1
 
 CMD ["node", "src/server.js"]

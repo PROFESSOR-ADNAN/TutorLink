@@ -58,6 +58,7 @@ exports.createBooking = catchAsync(async (req, res, next) => {
 
   // Notify tutor that a student has initiated a booking
   // and is about to pay — for awareness only, no action needed from tutor
+
   await sendEmail({
     to: tutor.user.email,
     subject: "A student is booking a session with you",

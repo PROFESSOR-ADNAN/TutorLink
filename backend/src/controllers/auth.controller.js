@@ -118,10 +118,15 @@ exports.verifyEmail = catchAsync(async (req, res, next) => {
 // ─── Forgot Password ──────────────────────────────────────
 exports.forgotPassword = catchAsync(async (req, res, next) => {
   const user = await User.findOne({ email: req.body.email });
+
   // Always return success (prevents user enumeration attacks)
+  // ✅ Always return success even if user not found
   if (!user) {
-    // return res.status(200).json({ message: 'If that email exists, a reset link has been sent.' });
-    return res.status(200).json({ message: "User Not Found." });
+    console.log(`Password reset requested for non-existent email: ${email}`);
+    return res.status(200).json({
+      status: "success",
+      message: "If that email exists, a reset link has been sent.",
+    });
   }
 
   const resetToken = user.createPasswordResetToken();
@@ -129,15 +134,25 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
 
   // const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
   const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/reset-password/${resetToken}`;
-  await sendEmail({
-    to: user.email,
-    subject: "Reset your TutorLink password (valid 10 minutes)",
-    template: "passwordReset",
-    data: { name: user.name, resetUrl },
-  });
 
-  // res.status(200).json({ message: 'If that email exists, a reset link has been sent.' });
-  res.status(200).json({ message: "A reset link has been sent." });
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: "Reset your TutorLink password (valid 10 minutes)",
+      template: "passwordReset",
+      data: { name: user.name, resetUrl },
+    });
+  } catch (emailError) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await User.save({ validateBeforeSave: false });
+
+    return next(new AppError("Error sending email. Please try again.", 500));
+  }
+
+  res
+    .status(200)
+    .json({ message: "If that email exists, a reset link has been sent." });
 });
 
 // ─── Reset Password ───────────────────────────────────────
