@@ -1,61 +1,23 @@
-# Docker Compose orchestrates multiple containers as a single app.
-# Think of it as a recipe: "run these 3 services together."
-#
-# Why use Docker at all?
-# • "Works on my machine" stops being a problem — everyone runs identical environments
-# • MongoDB version, Node version, etc. are all pinned
-# • One command to start everything: docker compose up
-# • Matches production closely — no surprises on deploy
-
-version: '3.9'
-
 services:
-
-  # ── MongoDB database ──────────────────────────────────
-  mongo:
-    image: mongo:7
-    container_name: tutorlink_mongo
-    restart: unless-stopped
-    environment:
-      # These create the root admin on first boot
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: rootpassword
-      MONGO_INITDB_DATABASE: tutorlink
-    ports:
-      - "27017:27017"         # Expose so you can use MongoDB Compass locally
-    volumes:
-      - mongo_data:/data/db   # Persist data between restarts (named volume)
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # ── Express API (backend) ─────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      # In development we use the regular Dockerfile but override the command
     container_name: tutorlink_backend
     restart: unless-stopped
-    depends_on:
-      mongo:
-        condition: service_healthy  # Wait for MongoDB to be ready before starting
     env_file:
-      - ./backend/.env            # Load all environment variables from file
+      - ./backend/.env       
     environment:
-      NODE_ENV: development
-      # Override the MONGO_URI to use the service name "mongo" (Docker DNS)
-      MONGO_URI: mongodb://root:rootpassword@mongo:27017/tutorlink?authSource=admin
+      NODE_ENV: development 
     ports:
       - "5000:5000"
     volumes:
-      # Mount source code — nodemon will auto-restart on file changes
-      - ./backend/src:/app/src:ro
-    command: npm run dev         # Override CMD to use nodemon in dev
+      - ./backend/src:/app/src:ro  
+    command: npm run dev
 
-  # ── React frontend (Vite dev server) ──────────────────
+  # ── React frontend ────────────────────────────────────
   frontend:
     build:
       context: ./frontend
@@ -68,6 +30,3 @@ services:
       VITE_API_URL: http://localhost:5000/api
     ports:
       - "3000:80"
-
-volumes:
-  mongo_data:     # Named volume — survives container restarts

@@ -48,7 +48,7 @@ function Message({ msg, isOwn }) {
       <div className={`max-w-xs lg:max-w-md ${isOwn ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
         <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
           isOwn
-            ? 'bg-primary-600 text-white rounded-br-sm'
+            ? 'bg-primary-600 text-black rounded-br-sm'
             : 'bg-white text-gray-800 border border-gray-100 shadow-sm rounded-bl-sm'
         }`}>
           {msg.content}

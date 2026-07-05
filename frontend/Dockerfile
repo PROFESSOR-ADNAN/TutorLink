@@ -6,12 +6,12 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
+
 # Build the production static files into /app/dist
 RUN npm run build
 
 # ── Stage 2: Serve with Nginx ─────────────────────────────
-# Nginx is a tiny, high-performance web server — perfect for serving
-# static files. The alpine image is only ~8MB.
+# Nginx is a tiny, high-performance web server 
 FROM nginx:alpine AS runner
 
 # Copy our custom Nginx config
