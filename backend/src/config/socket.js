@@ -1,5 +1,6 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const cookie = require('cookie');
 const User = require('../models/User.model');
 
 let io;
@@ -12,10 +13,15 @@ const initSocket = (server) => {
     },
   });
 
-  // Middleware: authenticate socket connections via JWT
+  // Middleware: authenticate socket connections via the same httpOnly
+  // cookie the REST API uses. The browser attaches cookies to the socket.io
+  // handshake automatically (it's a normal HTTP request under the hood) as
+  // long as the client connects with `withCredentials: true`, so we never
+  // need the frontend to read or hand over the raw token itself.
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth.token;
+      const rawCookies = socket.handshake.headers.cookie;
+      const token = rawCookies ? cookie.parse(rawCookies).token : null;
       if (!token) return next(new Error('Authentication error'));
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);

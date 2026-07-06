@@ -18,11 +18,13 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    const token = localStorage.getItem('token');
     const SOCKET_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
+    // No token to hand over — `withCredentials: true` makes the browser
+    // send our httpOnly auth cookie along with the handshake, same as any
+    // other request. The backend reads it in config/socket.js.
     socketRef.current = io(SOCKET_URL, {
-      auth: { token },
+      withCredentials: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     });

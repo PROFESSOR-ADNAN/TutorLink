@@ -18,23 +18,23 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
+  // The backend sets an httpOnly cookie on register/login — we never touch
+  // the token ourselves. We only keep the `user` object (non-sensitive
+  // profile data) in memory here.
   register: async (data) => {
-    const { token, user } = await api.post('/auth/register', data);
-    localStorage.setItem('token', token);
+    const { user } = await api.post('/auth/register', data);
     set({ user, isAuthenticated: true });
     return user;
   },
 
   login: async (email, password) => {
-    const { token, user } = await api.post('/auth/login', { email, password });
-    localStorage.setItem('token', token);
+    const { user } = await api.post('/auth/login', { email, password });
     set({ user, isAuthenticated: true });
     return user;
   },
 
   logout: async () => {
-    await api.post('/auth/logout');
-    localStorage.removeItem('token');
+    await api.post('/auth/logout'); // backend clears the cookie
     set({ user: null, isAuthenticated: false });
   },
 
