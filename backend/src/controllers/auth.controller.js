@@ -29,7 +29,7 @@ const sendTokenResponse = (user, statusCode, res) => {
 
   user.password = undefined; // Remove password from output
 
-  res.status(statusCode).json({ token, data: { user } });
+  res.status(statusCode).json({ user });
 };
 
 // ─── Register ─────────────────────────────────────────────

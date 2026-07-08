@@ -15,6 +15,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import BookingPage from './pages/BookingPage';
+import PaymentPage from './pages/PaymentPage';
 import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import ContactPage from './pages/ContactPage';
@@ -73,6 +74,14 @@ export default function App() {
               element={
                 <PrivateRoute roles={['student']}>
                   <BookingPage />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/pay/:bookingId"
+              element={
+                <PrivateRoute roles={['student']}>
+                  <PaymentPage />
                 </PrivateRoute>
               }
             />

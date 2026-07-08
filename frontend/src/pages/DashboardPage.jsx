@@ -14,7 +14,7 @@ import ErrorState from '../components/ui/ErrorState';
 import { SkeletonRows } from '../components/ui/Skeleton';
 
 const STATUS_CONFIG = {
-  pending: { label: 'Pending', variant: 'warning' },
+  pending: { label: 'Awaiting payment', variant: 'warning' },
   confirmed: { label: 'Confirmed', variant: 'forest' },
   completed: { label: 'Completed', variant: 'success' },
   cancelled: { label: 'Cancelled', variant: 'error' },
@@ -70,10 +70,13 @@ function BookingRow({ booking, onUpdate }) {
       </Badge>
 
       <div className="flex items-center gap-2 flex-shrink-0">
+        {!isTutor && booking.status === 'pending' && booking.payment?.status === 'unpaid' && (
+          <Link to={`/pay/${booking._id}`} className="btn btn-sm text-white bg-gold-400 hover:bg-gold-500">
+            Pay now
+          </Link>
+        )}
         {isTutor && booking.status === 'pending' && (
-          <Button size="sm" onClick={() => update('confirmed')}>
-            Confirm
-          </Button>
+          <span className="text-xs text-ink-400 italic px-1">Awaiting student payment</span>
         )}
         {isTutor && booking.status === 'confirmed' && !isPast && (
           <Button size="sm" variant="secondary" onClick={() => update('completed')}>

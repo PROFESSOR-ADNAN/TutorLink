@@ -5,13 +5,20 @@ const {
   getAll,
   updateMe,
   deleteMe,
+  uploadAvatar,
+  uploadCoverImage,
 } = require("../controllers/user.controller");
+const { uploadAvatar: avatarUpload, uploadCoverImage: coverUpload } = require("../middleware/upload.middleware");
 
 // Admin: list all users
 router.get("/", protect, restrictTo("admin"), getAll);
 
-// Update current user's profile (name, bio, avatar, etc.)
+// Update current user's profile (name, bio, etc. — text fields only)
 router.patch("/me", protect, updateMe);
+
+// Image uploads — separate endpoints since they're multipart, not JSON
+router.post("/me/avatar", protect, avatarUpload, uploadAvatar);
+router.post("/me/cover", protect, coverUpload, uploadCoverImage);
 
 // Deactivate account
 router.delete("/me", protect, deleteMe);

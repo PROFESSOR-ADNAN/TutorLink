@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -137,6 +137,65 @@ export default function ProfilePage() {
 
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirm: '' });
 
+  // If `user` wasn't fully hydrated yet the moment this component first
+  // mounted (e.g. a fast client-side redirect right after signup), backfill
+  // the form once real data arrives instead of leaving it permanently blank.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (user && !hydratedRef.current) {
+      hydratedRef.current = true;
+      setPersonal({
+        name: user.name || '',
+        bio: user.bio || '',
+        location: user.location || '',
+        phone: user.phone || '',
+      });
+    }
+  }, [user]);
+
+  const avatarInputRef = useRef(null);
+  const coverInputRef = useRef(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  const handleAvatarSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file later
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const { user: updated } = await api.post('/users/me/avatar', formData);
+      updateUser(updated);
+      toast.success('Photo updated');
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload photo');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleCoverSelect = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setUploadingCover(true);
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const { user: updated } = await api.post('/users/me/cover', formData);
+      updateUser(updated);
+      toast.success('Cover photo updated');
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload cover photo');
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
   useEffect(() => {
     if (user?.role !== 'tutor') return;
     setLoadingTutor(true);
@@ -173,6 +232,7 @@ export default function ProfilePage() {
       const data = await api.patch('/users/me', personal);
       updateUser(data.user);
       toast.success('Profile updated');
+      setMode('view');
     } catch (err) {
       toast.error(err.message || 'Failed to update profile');
     } finally {
@@ -196,6 +256,7 @@ export default function ProfilePage() {
         setTutorMeta({ id: data.tutor?._id, averageRating: 0, totalSessions: 0, isApproved: false });
         toast.success('Tutor profile created — pending admin approval');
       }
+      setMode('view');
     } catch (err) {
       toast.error(err.message || 'Failed to save tutor profile');
     } finally {
@@ -296,44 +357,78 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-canvas-100">
       {/* Cover header, LinkedIn-style */}
-      <div className="relative h-40 bg-gradient-to-br from-forest-800 to-forest-600">
-        <div className="absolute inset-0 bg-grid-canvas opacity-10" />
+      <div
+        className="relative h-40 sm:h-48 bg-gradient-to-br from-forest-800 to-forest-600 bg-cover bg-center"
+        style={user?.coverImage ? { backgroundImage: `url(${user.coverImage})` } : undefined}
+      >
+        {!user?.coverImage && <div className="absolute inset-0 bg-grid-canvas opacity-10" />}
+        {/* Dark scrim so the edit button stays legible on any photo */}
+        {user?.coverImage && <div className="absolute inset-0 bg-black/10" />}
+
+        <button
+          type="button"
+          onClick={() => coverInputRef.current?.click()}
+          disabled={uploadingCover}
+          className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-black/40 hover:bg-black/55 backdrop-blur-sm transition-colors disabled:opacity-60"
+        >
+          {uploadingCover ? (
+            'Uploading…'
+          ) : (
+            <>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <circle cx="12" cy="13" r="3.5" />
+              </svg>
+              Edit cover photo
+            </>
+          )}
+        </button>
+        <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverSelect} />
       </div>
 
       <div className="section relative">
-        {/* Avatar + identity block overlapping the cover */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-14 pb-6 border-b border-canvas-300">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-            <div className="relative flex-shrink-0">
-              <Avatar src={user?.avatar} name={user?.name} size="xl" ring className="shadow-[0_4px_16px_rgb(0,0,0,0.12)]" />
-              <button
-                type="button"
-                className="absolute bottom-1 right-1 w-8 h-8 rounded-full flex items-center justify-center text-white bg-forest-800 shadow-[0_2px_6px_rgb(0,0,0,0.2)] transition-transform hover:scale-105"
-                title="Change photo"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <circle cx="12" cy="13" r="3.5" />
-                </svg>
-              </button>
-            </div>
+        {/* Avatar — its own negative-margin wrapper so it overlaps the cover,
+            while the name/headline block below stays in normal flow and is
+            never covered by the banner regardless of content height. */}
+        <div className="relative inline-block -mt-14 sm:-mt-16">
+          <Avatar src={user?.avatar} name={user?.name} size="xl" ring className="shadow-[0_4px_16px_rgb(0,0,0,0.12)]" />
+          <button
+            type="button"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="absolute bottom-1 right-1 w-8 h-8 rounded-full flex items-center justify-center text-white bg-forest-800 shadow-[0_2px_6px_rgb(0,0,0,0.2)] transition-transform hover:scale-105 disabled:opacity-60"
+            title="Change photo"
+          >
+            {uploadingAvatar ? (
+              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <circle cx="12" cy="13" r="3.5" />
+              </svg>
+            )}
+          </button>
+          <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarSelect} />
+        </div>
 
-            <div className="pt-2 sm:pb-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="font-serif text-ink-900 text-2xl">{user?.name}</h1>
-                {user?.role === 'tutor' && (
-                  <Badge variant={hasTutorProfile ? 'success' : 'warning'}>
-                    {hasTutorProfile ? (tutorMeta?.isApproved ? 'Live' : 'Pending approval') : 'Profile incomplete'}
-                  </Badge>
-                )}
-              </div>
-              <p className="text-sm text-ink-700 font-medium mt-1">{headline}</p>
-              <p className="text-sm text-ink-400 mt-0.5">
-                {personal.location || 'Location not set'}
-                {memberSince && <> · Member since {memberSince}</>}
-              </p>
+        {/* Identity block + action row — normal document flow, always clear of the cover */}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mt-3 pb-6 border-b border-canvas-300">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="font-serif text-ink-900 text-2xl">{user?.name}</h1>
+              {user?.role === 'tutor' && (
+                <Badge variant={hasTutorProfile ? 'success' : 'warning'}>
+                  {hasTutorProfile ? (tutorMeta?.isApproved ? 'Live' : 'Pending approval') : 'Profile incomplete'}
+                </Badge>
+              )}
             </div>
+            <p className="text-sm text-ink-700 font-medium mt-1">{headline}</p>
+            <p className="text-sm text-ink-400 mt-0.5">
+              {personal.location || 'Location not set'}
+              {memberSince && <> · Member since {memberSince}</>}
+            </p>
           </div>
 
           {/* Action row */}

@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
 import { format, addDays } from 'date-fns';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { stripePromise } from '../services/stripe';
 import Avatar from '../components/ui/Avatar';
-
-const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
-if (!STRIPE_PUBLIC_KEY && import.meta.env.DEV) {
-  console.warn('VITE_STRIPE_PUBLIC_KEY is not set — payments will not work until it is configured.');
-}
-const stripePromise = STRIPE_PUBLIC_KEY ? loadStripe(STRIPE_PUBLIC_KEY) : null;
+import CheckoutForm from '../components/CheckoutForm';
 
 const DURATIONS = [
   { value: 30, label: '30 min' },
@@ -22,71 +17,6 @@ const DURATIONS = [
 
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
 
-// The inner form that uses Stripe hooks
-function BookingForm({ tutor, bookingData, bookingId, onSuccess }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [paying, setPaying] = useState(false);
-
-  const handlePay = async (e) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setPaying(true);
-    try {
-      // 1. Get a payment intent from our backend
-      const { clientSecret } = await api.post(`/payments/create-payment-intent/${bookingId}`);
-
-      // 2. Confirm payment with Stripe using the card element
-      const result = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: { card: elements.getElement(CardElement) },
-      });
-
-      if (result.error) {
-        toast.error(result.error.message);
-      } else {
-        toast.success('Payment successful! Booking confirmed 🎉');
-        onSuccess();
-      }
-    } catch (err) {
-      toast.error(err.message || 'Payment failed');
-    } finally {
-      setPaying(false);
-    }
-  };
-
-  const amount = (tutor.hourlyRate * bookingData.duration) / 60;
-
-  return (
-    <form onSubmit={handlePay} className="space-y-4">
-      <div className="bg-canvas-100 rounded-xl p-4">
-        <h4 className="text-sm font-semibold text-ink-600 mb-3">Card Details</h4>
-        <div className="bg-white border border-canvas-300 rounded-xl p-3">
-          <CardElement
-            options={{
-              style: {
-                base: { fontSize: '14px', color: '#111827', '::placeholder': { color: '#9ca3af' } },
-              },
-            }}
-          />
-        </div>
-        <p className="text-xs text-ink-400 mt-2">
-          Test card: 4242 4242 4242 4242 · Any future date · Any CVC
-        </p>
-      </div>
-
-      <div className="flex items-center justify-between py-3 border-t border-canvas-300">
-        <span className="text-sm text-ink-600">Total</span>
-        <span className="text-xl font-display font-bold text-ink-900">${amount.toFixed(2)}</span>
-      </div>
-
-      <button type="submit" disabled={!stripe || paying} className="btn-primary w-full py-3 text-base">
-        {paying ? 'Processing…' : `Pay $${amount.toFixed(2)}`}
-      </button>
-    </form>
-  );
-}
-
 export default function BookingPage() {
   const { tutorId } = useParams();
   const navigate = useNavigate();
@@ -94,6 +24,7 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1); // 1 = pick slot, 2 = pay
   const [bookingId, setBookingId] = useState(null);
+  const [bookingAmount, setBookingAmount] = useState(null);
 
   const [form, setForm] = useState({
     subject: '',
@@ -125,6 +56,7 @@ export default function BookingPage() {
         studentNotes: form.studentNotes,
       });
       setBookingId(data.booking._id);
+      setBookingAmount(data.booking.payment.amount);
       setStep(2);
       toast.success('Session slot reserved! Complete payment to confirm.');
     } catch (err) {
@@ -265,10 +197,9 @@ export default function BookingPage() {
             </div>
             {stripePromise ? (
               <Elements stripe={stripePromise}>
-                <BookingForm
-                  tutor={tutor}
-                  bookingData={form}
+                <CheckoutForm
                   bookingId={bookingId}
+                  amountCents={bookingAmount}
                   onSuccess={() => navigate('/dashboard')}
                 />
               </Elements>
@@ -277,6 +208,9 @@ export default function BookingPage() {
                 Payments aren't configured yet. Set <code>VITE_STRIPE_PUBLIC_KEY</code> to enable checkout.
               </div>
             )}
+            <p className="text-xs text-ink-400 text-center">
+              Closing this page won't lose your reservation — you can finish paying anytime from your dashboard.
+            </p>
             <button onClick={() => setStep(1)} className="btn-ghost w-full text-sm">
               ← Change time slot
             </button>

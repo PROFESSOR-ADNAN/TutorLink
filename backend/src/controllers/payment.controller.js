@@ -18,6 +18,19 @@ exports.createPaymentIntent = catchAsync(async (req, res, next) => {
     return next(new AppError("This booking is already paid", 400));
   }
 
+  if (booking.status === "cancelled") {
+    return next(new AppError("This booking has been cancelled", 400));
+  }
+
+  if (new Date(booking.scheduledAt) < new Date()) {
+    return next(
+      new AppError(
+        "This session's scheduled time has passed. Please book a new time.",
+        400,
+      ),
+    );
+  }
+
   const paymentIntent = await stripe.paymentIntents.create({
     amount: booking.payment.amount,
     currency: booking.payment.currency,

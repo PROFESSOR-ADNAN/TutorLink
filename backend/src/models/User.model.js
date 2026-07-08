@@ -33,6 +33,8 @@ const userSchema = new mongoose.Schema(
       default: 'https://res.cloudinary.com/tutorlink/image/upload/v1/defaults/avatar.png',
     },
     avatarPublicId: String, // Cloudinary public_id for deletion
+    coverImage: String,
+    coverImagePublicId: String, // Cloudinary public_id for deletion
     bio: {
       type: String,
       maxlength: [500, 'Bio cannot exceed 500 characters'],

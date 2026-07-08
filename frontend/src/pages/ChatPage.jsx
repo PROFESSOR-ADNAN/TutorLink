@@ -168,10 +168,11 @@ export default function ChatPage() {
     if (conv) setActiveUser(conv.otherUser);
   }, [conversations, activeUserId, activeUser]);
 
-  // Scroll to bottom when messages update
-  // useEffect(() => {
-  //   messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  // }, [messages]);
+  // Scroll to bottom whenever the message list changes (new message sent/received)
+  // or a different conversation is opened.
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, activeUserId]);
 
   // Socket.IO listeners for the active room
   useEffect(() => {
@@ -202,6 +203,14 @@ export default function ChatPage() {
     const content = input.trim();
     if (!content || !activeUserId) return;
 
+    // Defensive guard: if auth state hasn't fully hydrated yet (e.g. a stale
+    // user object right after registering/logging in), don't let this throw
+    // silently — bail out loudly instead of crashing the handler.
+    if (!user?._id) {
+      toast.error("Still setting up your session — please try again in a moment.");
+      return;
+    }
+
     setInput("");
 
     const roomId = [user._id, activeUserId].sort().join("_");
@@ -212,15 +221,18 @@ export default function ChatPage() {
     });
     setMessages((prev) => [...prev, optimisticMsg]);
 
-    socket?.emit("send_message", { roomId, content, receiverId: activeUserId });
-
     try {
+      socket?.emit("send_message", { roomId, content, receiverId: activeUserId });
       await api.post("/chat", { receiverId: activeUserId, content });
       // First message in a brand-new thread — refresh the sidebar so it appears there too
       if (!conversations.some((c) => c.otherUser?._id === activeUserId)) {
         loadConversations();
       }
     } catch (err) {
+      // Never let a failed send just vanish — restore it to the input and
+      // remove the optimistic bubble so the UI matches reality.
+      setMessages((prev) => prev.filter((m) => m._id !== optimisticMsg._id));
+      setInput(content);
       toast.error(err.message || "Message failed to send");
     }
   };

@@ -85,6 +85,30 @@ exports.createBooking = catchAsync(async (req, res, next) => {
   res.status(201).json({ booking });
 });
 
+// ─── Get a single booking (for the payment/resume page) ───
+exports.getBooking = catchAsync(async (req, res, next) => {
+  const booking = await Booking.findById(req.params.id)
+    .populate("student", "name avatar email")
+    .populate({
+      path: "tutor",
+      populate: { path: "user", select: "name avatar email" },
+    });
+
+  if (!booking) return next(new AppError("Booking not found", 404));
+
+  const isStudent = booking.student._id.toString() === req.user._id.toString();
+  const isTutor =
+    req.user.role === "tutor" &&
+    booking.tutor.user._id.toString() === req.user._id.toString();
+  const isAdmin = req.user.role === "admin";
+
+  if (!isStudent && !isTutor && !isAdmin) {
+    return next(new AppError("Not authorized to view this booking", 403));
+  }
+
+  res.status(200).json({ booking });
+});
+
 // ─── Get bookings for current user ────────────────────────
 exports.getMyBookings = catchAsync(async (req, res, next) => {
   const { status, page = 1, limit = 10 } = req.query;

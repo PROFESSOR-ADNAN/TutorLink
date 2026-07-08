@@ -40,6 +40,18 @@ const errorHandler = (err, req, res, next) => {
     error = new AppError("Invalid token", 401);
   }
 
+  // Multer: file upload errors (avatar/cover image uploads)
+  if (err.name === "MulterError") {
+    const message =
+      err.code === "LIMIT_FILE_SIZE"
+        ? "Image is too large."
+        : "Failed to upload image.";
+    error = new AppError(message, 400);
+  }
+  if (err.message === "Only image files are allowed") {
+    error = new AppError(err.message, 400);
+  }
+
   if (process.env.NODE_ENV === "development") {
     // In development, send full error details
     return res.status(error.statusCode).json({
