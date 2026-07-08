@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import useAuthStore from '../context/authStore';
+import Avatar from '../components/ui/Avatar';
 
 function Stars({ rating }) {
   return (
@@ -53,8 +54,7 @@ export default function TutorProfilePage() {
           </Link>
           <div className="flex flex-col sm:flex-row gap-6 items-start">
             <div className="relative flex-shrink-0">
-              <img src={tutor.user?.avatar} alt={tutor.user?.name}
-                className="w-20 h-20 rounded-2xl object-cover" />
+              <Avatar src={tutor.user?.avatar} name={tutor.user?.name} size="xl" className="!w-20 !h-20 !rounded-2xl" />
               <span className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-green-400 rounded-full ring-2 ring-white" />
             </div>
             <div className="flex-1">
@@ -92,6 +92,17 @@ export default function TutorProfilePage() {
                 ) : (
                   <button className="btn-outline w-full justify-center" disabled>Book a session</button>
                 )}
+
+                {isAuthenticated && user?._id !== tutor.user?._id && (
+                  <Link
+                    to={`/chat/${tutor.user?._id}`}
+                    state={{ otherUser: { _id: tutor.user?._id, name: tutor.user?.name, avatar: tutor.user?.avatar, role: 'tutor' } }}
+                    className="btn-outline w-full justify-center mt-2"
+                  >
+                    Message
+                  </Link>
+                )}
+
                 <p className="text-xs text-center text-ink-400 mt-3">No charge until confirmed</p>
               </div>
             </div>
@@ -144,8 +155,7 @@ export default function TutorProfilePage() {
               <div className="space-y-5">
                 {reviews.map(review => (
                   <div key={review._id} className="flex gap-4 pb-5 last:pb-0" style={{ borderBottom: '1px solid #F4F4EF' }}>
-                    <img src={review.student?.avatar} alt={review.student?.name}
-                      className="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5" />
+                    <Avatar src={review.student?.avatar} name={review.student?.name} size="sm" className="mt-0.5" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1.5">
                         <span className="font-sans font-medium text-sm text-ink-900">{review.student?.name}</span>

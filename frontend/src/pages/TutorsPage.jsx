@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import api from '../services/api';
+import Avatar from '../components/ui/Avatar';
 
 const SUBJECTS = ['Mathematics','Physics','Chemistry','Programming','English','Biology','History','Spanish','Economics','Music'];
 
@@ -24,8 +25,7 @@ function TutorCard({ tutor }) {
         {/* Header */}
         <div className="flex items-start gap-4 mb-4">
           <div className="relative flex-shrink-0">
-            <img src={tutor.user?.avatar} alt={tutor.user?.name}
-              className="w-12 h-12 rounded-xl object-cover" />
+            <Avatar src={tutor.user?.avatar} name={tutor.user?.name} size="md" />
             <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full ring-2 ring-white" />
           </div>
           <div className="flex-1 min-w-0">

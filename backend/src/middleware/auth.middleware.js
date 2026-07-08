@@ -11,9 +11,9 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(" ")[1];
     }
     // 2. Fall back to HTTP-only cookie (for web browser clients)
-    // else if (req.cookies?.token) {
-    //   token = req.cookies.token;
-    // }
+    else if (req.cookies?.token) {
+      token = req.cookies.token;
+    }
 
     if (!token) {
       return res

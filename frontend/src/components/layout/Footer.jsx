@@ -1,6 +1,44 @@
 import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import useAuthStore from '../../context/authStore';
+import api from '../../services/api';
+
+function StatusIndicator() {
+  // 'checking' | 'ok' | 'down' — reflects a real call to the backend's
+  // health endpoint rather than a hardcoded "All systems operational" claim.
+  const [status, setStatus] = useState('checking');
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get('/health')
+      .then(() => !cancelled && setStatus('ok'))
+      .catch(() => !cancelled && setStatus('down'));
+    return () => { cancelled = true; };
+  }, []);
+
+  const config = {
+    checking: { color: 'bg-canvas-300', text: 'Checking status…' },
+    ok: { color: 'bg-green-400', text: 'All systems operational' },
+    down: { color: 'bg-red-400', text: 'Some services may be unavailable' },
+  }[status];
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={`w-1.5 h-1.5 rounded-full ${config.color} ${status === 'checking' ? 'animate-pulse' : ''}`} />
+      <span className="text-xs" style={{ color: 'rgb(255 255 255 / 0.35)' }}>{config.text}</span>
+    </div>
+  );
+}
 
 export default function Footer() {
+  const { isAuthenticated } = useAuthStore();
+
+  const platformLinks = [
+    { to: '/tutors', label: 'Find Tutors' },
+    ...(!isAuthenticated ? [{ to: '/register', label: 'Sign Up' }] : []),
+  ];
+
   return (
     <footer style={{ background: '#141410', borderTop: '1px solid #2D2D26' }}>
       <div className="section py-14">
@@ -25,11 +63,7 @@ export default function Footer() {
             <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4"
               style={{ color: 'rgb(255 255 255 / 0.35)' }}>Platform</h4>
             <ul className="space-y-2.5">
-              {[
-                { to: '/tutors',        label: 'Find Tutors' },
-                { to: '/become-tutor',  label: 'Become a Tutor' },
-                { to: '/register',      label: 'Sign Up' },
-              ].map(({ to, label }) => (
+              {platformLinks.map(({ to, label }) => (
                 <li key={label}>
                   <Link to={to} className="text-sm transition-colors hover:text-white"
                     style={{ color: 'rgb(255 255 255 / 0.5)' }}>{label}</Link>
@@ -56,13 +90,13 @@ export default function Footer() {
               style={{ color: 'rgb(255 255 255 / 0.35)' }}>Support</h4>
             <ul className="space-y-2.5">
               {[
-                { href: 'mailto:support@tutorlink.com', label: 'Contact' },
-                { href: '#', label: 'Privacy Policy' },
-                { href: '#', label: 'Terms of Service' },
-              ].map(({ href, label }) => (
+                { to: '/contact', label: 'Contact' },
+                { to: '/privacy', label: 'Privacy Policy' },
+                { to: '/terms',   label: 'Terms of Service' },
+              ].map(({ to, label }) => (
                 <li key={label}>
-                  <a href={href} className="text-sm transition-colors hover:text-white"
-                    style={{ color: 'rgb(255 255 255 / 0.5)' }}>{label}</a>
+                  <Link to={to} className="text-sm transition-colors hover:text-white"
+                    style={{ color: 'rgb(255 255 255 / 0.5)' }}>{label}</Link>
                 </li>
               ))}
             </ul>
@@ -74,10 +108,7 @@ export default function Footer() {
           <p className="text-xs" style={{ color: 'rgb(255 255 255 / 0.25)' }}>
             © {new Date().getFullYear()} TutorLink. All rights reserved.
           </p>
-          <div className="flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-            <span className="text-xs" style={{ color: 'rgb(255 255 255 / 0.35)' }}>All systems operational</span>
-          </div>
+          <StatusIndicator />
         </div>
       </div>
     </footer>

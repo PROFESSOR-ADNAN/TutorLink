@@ -58,26 +58,29 @@ exports.createBooking = catchAsync(async (req, res, next) => {
 
   // Notify tutor that a student has initiated a booking
   // and is about to pay — for awareness only, no action needed from tutor
-
-  await sendEmail({
-    to: tutor.user.email,
-    subject: "A student is booking a session with you",
-    template: "bookingInitiated",
-    data: {
-      tutorName: tutor.user.name,
-      studentName: req.user.name,
-      subject,
-      scheduledAt: new Date(scheduledAt).toLocaleString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      duration,
-    },
-  });
+  try {
+    await sendEmail({
+      to: tutor.user.email,
+      subject: "A student is booking a session with you",
+      template: "bookingInitiated",
+      data: {
+        tutorName: tutor.user.name,
+        studentName: req.user.name,
+        subject,
+        scheduledAt: new Date(scheduledAt).toLocaleString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        duration,
+      },
+    });
+  } catch (err) {
+    console.error("Failed to send verification email:", err.message); // log, don't throw
+  }
 
   res.status(201).json({ booking });
 });

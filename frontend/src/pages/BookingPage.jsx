@@ -2,11 +2,16 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { format, addDays, setHours, setMinutes } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import Avatar from '../components/ui/Avatar';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_placeholder');
+const STRIPE_PUBLIC_KEY = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
+if (!STRIPE_PUBLIC_KEY && import.meta.env.DEV) {
+  console.warn('VITE_STRIPE_PUBLIC_KEY is not set — payments will not work until it is configured.');
+}
+const stripePromise = STRIPE_PUBLIC_KEY ? loadStripe(STRIPE_PUBLIC_KEY) : null;
 
 const DURATIONS = [
   { value: 30, label: '30 min' },
@@ -54,9 +59,9 @@ function BookingForm({ tutor, bookingData, bookingId, onSuccess }) {
 
   return (
     <form onSubmit={handlePay} className="space-y-4">
-      <div className="bg-gray-50 rounded-xl p-4">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Card Details</h4>
-        <div className="bg-white border border-gray-200 rounded-xl p-3">
+      <div className="bg-canvas-100 rounded-xl p-4">
+        <h4 className="text-sm font-semibold text-ink-600 mb-3">Card Details</h4>
+        <div className="bg-white border border-canvas-300 rounded-xl p-3">
           <CardElement
             options={{
               style: {
@@ -65,14 +70,14 @@ function BookingForm({ tutor, bookingData, bookingId, onSuccess }) {
             }}
           />
         </div>
-        <p className="text-xs text-gray-400 mt-2">
+        <p className="text-xs text-ink-400 mt-2">
           Test card: 4242 4242 4242 4242 · Any future date · Any CVC
         </p>
       </div>
 
-      <div className="flex items-center justify-between py-3 border-t border-gray-100">
-        <span className="text-sm text-gray-600">Total</span>
-        <span className="text-xl font-display font-bold text-gray-900">${amount.toFixed(2)}</span>
+      <div className="flex items-center justify-between py-3 border-t border-canvas-300">
+        <span className="text-sm text-ink-600">Total</span>
+        <span className="text-xl font-display font-bold text-ink-900">${amount.toFixed(2)}</span>
       </div>
 
       <button type="submit" disabled={!stripe || paying} className="btn-primary w-full py-3 text-base">
@@ -130,30 +135,29 @@ export default function BookingPage() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-10 animate-pulse space-y-4">
-        <div className="h-32 bg-gray-200 rounded-2xl" />
-        <div className="h-64 bg-gray-200 rounded-2xl" />
+        <div className="h-32 bg-canvas-300 rounded-2xl" />
+        <div className="h-64 bg-canvas-300 rounded-2xl" />
       </div>
     );
   }
 
-  if (!tutor) return <div className="text-center py-20 text-gray-500">Tutor not found.</div>;
+  if (!tutor) return <div className="text-center py-20 text-ink-400">Tutor not found.</div>;
 
   const price = (tutor.hourlyRate * form.duration) / 60;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <h1 className="text-2xl font-display font-extrabold text-gray-900 mb-2">Book a Session</h1>
+      <h1 className="text-2xl font-display font-extrabold text-ink-900 mb-2">Book a Session</h1>
 
       {/* Tutor summary */}
       <div className="card p-5 flex items-center gap-4 mb-6">
-        <img src={tutor.user?.avatar} alt={tutor.user?.name}
-          className="w-14 h-14 rounded-xl object-cover" />
+        <Avatar src={tutor.user?.avatar} name={tutor.user?.name} size="lg" />
         <div>
-          <h2 className="font-semibold text-gray-900">{tutor.user?.name}</h2>
-          <p className="text-sm text-gray-500">{tutor.subjects.slice(0, 3).join(' · ')}</p>
+          <h2 className="font-semibold text-ink-900">{tutor.user?.name}</h2>
+          <p className="text-sm text-ink-400">{tutor.subjects.slice(0, 3).join(' · ')}</p>
         </div>
         <div className="ml-auto text-right">
-          <div className="text-xl font-bold text-gray-900">${tutor.hourlyRate}<span className="text-sm font-normal text-gray-400">/hr</span></div>
+          <div className="text-xl font-bold text-ink-900">${tutor.hourlyRate}<span className="text-sm font-normal text-ink-400">/hr</span></div>
         </div>
       </div>
 
@@ -161,11 +165,11 @@ export default function BookingPage() {
       <div className="flex items-center gap-3 mb-8">
         {[{ n: 1, label: 'Choose Time' }, { n: 2, label: 'Pay' }].map(({ n, label }) => (
           <div key={n} className="flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${step >= n ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-400'}`}>
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${step >= n ? 'bg-forest-800 text-white' : 'bg-canvas-300 text-ink-400'}`}>
               {n}
             </div>
-            <span className={`text-sm font-medium ${step >= n ? 'text-gray-900' : 'text-gray-400'}`}>{label}</span>
-            {n < 2 && <div className="w-8 h-px bg-gray-200 ml-1" />}
+            <span className={`text-sm font-medium ${step >= n ? 'text-ink-900' : 'text-ink-400'}`}>{label}</span>
+            {n < 2 && <div className="w-8 h-px bg-canvas-300 ml-1" />}
           </div>
         ))}
       </div>
@@ -193,8 +197,8 @@ export default function BookingPage() {
                     onClick={() => setForm({ ...form, duration: value })}
                     className={`py-2.5 rounded-xl text-sm font-medium border transition ${
                       form.duration === value
-                        ? 'bg-primary-600 text-white border-primary-600'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300'
+                        ? 'bg-forest-800 text-white border-forest-800'
+                        : 'bg-white text-ink-600 border-canvas-300 hover:border-forest-300'
                     }`}
                   >
                     {label}
@@ -222,8 +226,8 @@ export default function BookingPage() {
                     onClick={() => setForm({ ...form, time: t })}
                     className={`py-2 rounded-xl text-sm font-medium border transition ${
                       form.time === t
-                        ? 'bg-primary-600 text-white border-primary-600'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300'
+                        ? 'bg-forest-800 text-white border-forest-800'
+                        : 'bg-white text-ink-600 border-canvas-300 hover:border-forest-300'
                     }`}
                   >
                     {t}
@@ -234,7 +238,7 @@ export default function BookingPage() {
 
             {/* Notes */}
             <div>
-              <label className="label">Notes for the tutor <span className="text-gray-400">(optional)</span></label>
+              <label className="label">Notes for the tutor <span className="text-ink-400">(optional)</span></label>
               <textarea rows={3} className="input resize-none"
                 placeholder="What do you need help with? Any specific topics or goals?"
                 value={form.studentNotes}
@@ -243,11 +247,11 @@ export default function BookingPage() {
             </div>
 
             {/* Price summary */}
-            <div className="bg-primary-50 rounded-xl p-4 flex items-center justify-between">
-              <div className="text-sm text-primary-700">
+            <div className="bg-forest-50 rounded-xl p-4 flex items-center justify-between">
+              <div className="text-sm text-forest-800">
                 {form.duration} min · {form.date} at {form.time}
               </div>
-              <div className="text-xl font-display font-bold text-primary-700">${price.toFixed(2)}</div>
+              <div className="text-xl font-display font-bold text-forest-800">${price.toFixed(2)}</div>
             </div>
 
             <button type="submit" className="btn-primary w-full py-3 text-base">
@@ -259,14 +263,20 @@ export default function BookingPage() {
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700">
               ✅ Slot reserved for <strong>{form.date} at {form.time}</strong> — complete payment to confirm.
             </div>
-            <Elements stripe={stripePromise}>
-              <BookingForm
-                tutor={tutor}
-                bookingData={form}
-                bookingId={bookingId}
-                onSuccess={() => navigate('/dashboard')}
-              />
-            </Elements>
+            {stripePromise ? (
+              <Elements stripe={stripePromise}>
+                <BookingForm
+                  tutor={tutor}
+                  bookingData={form}
+                  bookingId={bookingId}
+                  onSuccess={() => navigate('/dashboard')}
+                />
+              </Elements>
+            ) : (
+              <div className="bg-gold-50 border border-gold-200 rounded-xl p-4 text-sm text-gold-800">
+                Payments aren't configured yet. Set <code>VITE_STRIPE_PUBLIC_KEY</code> to enable checkout.
+              </div>
+            )}
             <button onClick={() => setStep(1)} className="btn-ghost w-full text-sm">
               ← Change time slot
             </button>

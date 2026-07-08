@@ -17,7 +17,9 @@ import DashboardPage from './pages/DashboardPage';
 import BookingPage from './pages/BookingPage';
 import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
-import BecomeTutorPage from './pages/BecomeTutorPage';
+import ContactPage from './pages/ContactPage';
+import PrivacyPage from './pages/PrivacyPage';
+import TermsPage from './pages/TermsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Guard for protected routes
@@ -26,8 +28,8 @@ const PrivateRoute = ({ children, roles }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+      <div className="min-h-screen flex items-center justify-center bg-canvas-100">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest-800" />
       </div>
     );
   }
@@ -46,7 +48,7 @@ export default function App() {
 
   return (
     <SocketProvider>
-      <div className="min-h-screen flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-canvas-100">
         <Navbar />
         <main className="flex-1">
           <Routes>
@@ -98,14 +100,9 @@ export default function App() {
                 </PrivateRoute>
               }
             />
-            <Route
-              path="/become-tutor"
-              element={
-                <PrivateRoute>
-                  <BecomeTutorPage />
-                </PrivateRoute>
-              }
-            />
+            <Route path="/contact" element={<ContactPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
 
             {/* 404 */}
             <Route path="*" element={<NotFoundPage />} />

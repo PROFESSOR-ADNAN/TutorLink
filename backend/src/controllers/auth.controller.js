@@ -22,6 +22,7 @@ const sendTokenResponse = (user, statusCode, res) => {
     httpOnly: true, // Cookie not accessible by JavaScript (prevents XSS token theft)
     secure: process.env.NODE_ENV === "production", // HTTPS only in production
     sameSite: "strict", // CSRF protection
+    // sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   };
 
   res.cookie("token", token, cookieOptions);
@@ -46,12 +47,17 @@ exports.register = catchAsync(async (req, res, next) => {
 
   // const verifyUrl = `${process.env.CLIENT_URL}/verify-email/${verifyToken}`;
   const verifyUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${verifyToken}`;
-  await sendEmail({
-    to: user.email,
-    subject: "Verify your TutorLink account",
-    template: "emailVerification",
-    data: { name: user.name, verifyUrl },
-  });
+
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: "Verify your TutorLink account",
+      template: "emailVerification",
+      data: { name: user.name, verifyUrl },
+    });
+  } catch (err) {
+    console.error("Failed to send verification email:", err.message); // log, don't throw
+  }
 
   sendTokenResponse(user, 201, res);
 });

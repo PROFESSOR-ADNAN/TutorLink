@@ -104,41 +104,49 @@ exports.stripeWebhook = async (req, res) => {
       const amount = (booking.payment.amount / 100).toFixed(2);
 
       // Email the student
-      await sendEmail({
-        to: booking.student.email,
-        subject: "Your TutorLink session is confirmed ✅",
-        template: "sessionConfirmed",
-        data: {
-          name: booking.student.name,
-          otherPersonName: booking.tutor.user.name,
-          role: "student",
-          subject: booking.subject,
-          sessionDate,
-          duration: booking.duration,
-          amount,
-          meetingUrl,
-        },
-      });
+      try {
+        await sendEmail({
+          to: booking.student.email,
+          subject: "Your TutorLink session is confirmed ✅",
+          template: "sessionConfirmed",
+          data: {
+            name: booking.student.name,
+            otherPersonName: booking.tutor.user.name,
+            role: "student",
+            subject: booking.subject,
+            sessionDate,
+            duration: booking.duration,
+            amount,
+            meetingUrl,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to send verification email:", err.message); // log, don't throw
+      }
 
       // Add delay before sending second email
       await new Promise((resolve) => setTimeout(resolve, 10000)); // 10 second delay
 
       // Email the tutor
-      await sendEmail({
-        to: booking.tutor.user.email,
-        subject: "New paid session booked ✅",
-        template: "sessionConfirmed",
-        data: {
-          name: booking.tutor.user.name,
-          otherPersonName: booking.student.name,
-          role: "tutor",
-          subject: booking.subject,
-          sessionDate,
-          duration: booking.duration,
-          amount,
-          meetingUrl,
-        },
-      });
+      try {
+        await sendEmail({
+          to: booking.tutor.user.email,
+          subject: "New paid session booked ✅",
+          template: "sessionConfirmed",
+          data: {
+            name: booking.tutor.user.name,
+            otherPersonName: booking.student.name,
+            role: "tutor",
+            subject: booking.subject,
+            sessionDate,
+            duration: booking.duration,
+            amount,
+            meetingUrl,
+          },
+        });
+      } catch (err) {
+        console.error("Failed to send verification email:", err.message); // log, don't throw
+      }
 
       console.log(
         `✅ Booking ${bookingId} confirmed — emails sent to both parties`,
