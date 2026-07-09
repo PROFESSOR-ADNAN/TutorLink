@@ -1,10 +1,94 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { format } from 'date-fns';
 import useAuthStore from '../../context/authStore';
+import { useNotifications } from '../../context/NotificationContext';
+import Avatar from '../ui/Avatar';
 import toast from 'react-hot-toast';
+
+function NotificationBell() {
+  const { unreadConversations, totalUnread, markConversationRead } = useNotifications();
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const wrapperRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  const openConversation = (conv) => {
+    markConversationRead(conv.otherUser._id);
+    setOpen(false);
+    navigate(`/chat/${conv.otherUser._id}`, { state: { otherUser: conv.otherUser } });
+  };
+
+  return (
+    <div className="relative" ref={wrapperRef}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="relative p-2 rounded-lg text-ink-500 hover:text-ink-900 hover:bg-canvas-200 transition-colors"
+        aria-label="Notifications"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+            d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+        {totalUnread > 0 && (
+          <span className="absolute top-0.5 right-0.5 min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+            {totalUnread > 9 ? '9+' : totalUnread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] card p-0 overflow-hidden shadow-lg z-50">
+          <div className="px-4 py-3 border-b border-canvas-200">
+            <h3 className="font-sans font-semibold text-sm text-ink-900">Messages</h3>
+          </div>
+          {unreadConversations.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-ink-400 text-center">You're all caught up.</p>
+          ) : (
+            <div className="max-h-80 overflow-y-auto">
+              {unreadConversations.map((conv) => (
+                <button
+                  key={conv._id}
+                  onClick={() => openConversation(conv)}
+                  className="w-full flex items-start gap-3 px-4 py-3 hover:bg-canvas-100 transition-colors text-left border-b border-canvas-100 last:border-0"
+                >
+                  <Avatar src={conv.otherUser?.avatar} name={conv.otherUser?.name} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-sans font-medium text-sm text-ink-900 truncate">{conv.otherUser?.name}</span>
+                      <span className="text-[11px] text-ink-400 flex-shrink-0">
+                        {format(new Date(conv.lastMessage.createdAt), 'h:mm a')}
+                      </span>
+                    </div>
+                    <p className="text-xs text-ink-500 truncate">{conv.lastMessage.content}</p>
+                  </div>
+                  <span className="min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center rounded-full bg-forest-800 text-white text-[10px] font-bold flex-shrink-0 mt-0.5">
+                    {conv.unreadCount}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          <Link to="/chat" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-center text-xs font-semibold text-forest-800 hover:bg-canvas-100 border-t border-canvas-200">
+            View all messages
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { totalUnread } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -71,14 +155,11 @@ export default function Navbar() {
         {/* Desktop auth */}
         <div className="hidden md:flex items-center gap-2 flex-shrink-0">
           {isAuthenticated ? (
-            <div className="flex items-center gap-3">
-              <Link to="/profile" className="flex items-center gap-2.5 group">
+            <div className="flex items-center gap-1">
+              <NotificationBell />
+              <Link to="/profile" className="flex items-center gap-2.5 group pl-2">
                 <div className="relative">
-                  <img
-                    src={user?.avatar}
-                    alt={user?.name}
-                    className="w-8 h-8 rounded-full object-cover ring-2 ring-canvas-300 group-hover:ring-forest-300 transition-all"
-                  />
+                  <Avatar src={user?.avatar} name={user?.name} size="sm" className="ring-2 ring-canvas-300 group-hover:ring-forest-300 transition-all" />
                   <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-white" />
                 </div>
                 <span className="text-sm font-medium text-ink-700 group-hover:text-ink-900 transition-colors">
@@ -124,7 +205,14 @@ export default function Navbar() {
             {isAuthenticated ? (
               <>
                 <Link to="/dashboard" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">Dashboard</Link>
-                <Link to="/chat" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">Messages</Link>
+                <Link to="/chat" className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">
+                  Messages
+                  {totalUnread > 0 && (
+                    <span className="min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                      {totalUnread > 9 ? '9+' : totalUnread}
+                    </span>
+                  )}
+                </Link>
                 <Link to="/profile" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">Profile</Link>
                 <div className="pt-2 mt-2 border-t border-canvas-200">
                   <button onClick={handleLogout} className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">

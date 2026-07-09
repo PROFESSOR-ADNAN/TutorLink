@@ -4,6 +4,7 @@ import { format, isAfter } from 'date-fns';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import useAuthStore from '../context/authStore';
+import { useNotifications } from '../context/NotificationContext';
 import useApiData from '../hooks/useApiData';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -21,12 +22,102 @@ const STATUS_CONFIG = {
   no_show: { label: 'No-show', variant: 'neutral' },
 };
 
-function BookingRow({ booking, onUpdate }) {
+/** Full session details — meeting link, discussion topic, notes, and who
+ * you're meeting with. Opens when a confirmed/completed booking is clicked. */
+function BookingDetailsModal({ booking, onClose }) {
+  const { user } = useAuthStore();
+  const isTutor = user?.role === 'tutor';
+  const other = isTutor ? booking.student : booking.tutor?.user;
+  const cfg = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-white px-6 py-4 border-b border-canvas-200 flex items-center justify-between">
+          <h2 className="font-serif text-lg text-ink-900">Session details</h2>
+          <button onClick={onClose} className="text-ink-400 hover:text-ink-700 p-1" aria-label="Close">✕</button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Avatar src={other?.avatar} name={other?.name} size="md" />
+              <div>
+                <div className="font-sans font-semibold text-sm text-ink-900">{other?.name}</div>
+                <div className="text-xs text-ink-400">{isTutor ? 'Student' : 'Tutor'}{other?.email ? ` · ${other.email}` : ''}</div>
+              </div>
+            </div>
+            <Badge variant={cfg.variant}>{cfg.label}</Badge>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Subject</p>
+              <p className="text-sm text-ink-900">{booking.subject}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Date & time</p>
+              <p className="text-sm text-ink-900">{format(new Date(booking.scheduledAt), 'MMM d, yyyy · h:mm a')}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Duration</p>
+              <p className="text-sm text-ink-900">{booking.duration} minutes</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Amount</p>
+              <p className="text-sm text-ink-900">${(booking.payment.amount / 100).toFixed(2)}</p>
+            </div>
+          </div>
+
+          {booking.meetingUrl && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Meeting link</p>
+              <a href={booking.meetingUrl} target="_blank" rel="noopener noreferrer"
+                className="text-sm text-forest-800 font-medium hover:underline break-all">
+                {booking.meetingUrl}
+              </a>
+            </div>
+          )}
+
+          {booking.studentNotes && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">
+                {isTutor ? "What the student wants help with" : 'Your notes for the tutor'}
+              </p>
+              <p className="text-sm text-ink-700 whitespace-pre-line">{booking.studentNotes}</p>
+            </div>
+          )}
+
+          {booking.tutorNotes && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Tutor's notes</p>
+              <p className="text-sm text-ink-700 whitespace-pre-line">{booking.tutorNotes}</p>
+            </div>
+          )}
+
+          {booking.sessionSummary && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Session summary</p>
+              <p className="text-sm text-ink-700 whitespace-pre-line">{booking.sessionSummary}</p>
+            </div>
+          )}
+
+          <Link to={`/chat/${other?._id}`} state={{ otherUser: other }} onClick={onClose} className="btn-outline w-full justify-center">
+            Message {other?.name?.split(' ')[0]}
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookingRow({ booking, onUpdate, onViewDetails }) {
   const { user } = useAuthStore();
   const isTutor = user?.role === 'tutor';
   const other = isTutor ? booking.student : booking.tutor?.user;
   const cfg = STATUS_CONFIG[booking.status] || STATUS_CONFIG.pending;
   const isPast = !isAfter(new Date(booking.scheduledAt), new Date());
+  const hasDetails = ['confirmed', 'completed'].includes(booking.status);
 
   // Only allow joining starting 10 minutes before the scheduled time
   const canJoin =
@@ -45,7 +136,10 @@ function BookingRow({ booking, onUpdate }) {
   };
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 rounded-xl transition-colors hover:bg-canvas-100 border-b border-canvas-200 last:border-0">
+    <div
+      onClick={hasDetails ? () => onViewDetails(booking) : undefined}
+      className={`flex flex-col sm:flex-row sm:items-center gap-4 p-5 rounded-xl transition-colors hover:bg-canvas-100 border-b border-canvas-200 last:border-0 ${hasDetails ? 'cursor-pointer' : ''}`}
+    >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <Avatar src={other?.avatar} name={other?.name} />
         <div className="min-w-0">
@@ -69,7 +163,7 @@ function BookingRow({ booking, onUpdate }) {
         {cfg.label}
       </Badge>
 
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
         {!isTutor && booking.status === 'pending' && booking.payment?.status === 'unpaid' && (
           <Link to={`/pay/${booking._id}`} className="btn btn-sm text-white bg-gold-400 hover:bg-gold-500">
             Pay now
@@ -104,10 +198,21 @@ function BookingRow({ booking, onUpdate }) {
             </span>
           ))}
 
-        {['pending', 'confirmed'].includes(booking.status) && (
+        {/* Only the student (or an admin, elsewhere) can cancel — a tutor
+            shouldn't be able to back out of a paid, confirmed session with
+            a single click. */}
+        {!isTutor && ['pending', 'confirmed'].includes(booking.status) && (
           <Button size="sm" variant="danger" onClick={() => update('cancelled')}>
             Cancel
           </Button>
+        )}
+
+        {hasDetails && (
+          <button onClick={() => onViewDetails(booking)} className="text-ink-400 hover:text-forest-800 p-1.5" title="View details">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         )}
       </div>
     </div>
@@ -116,7 +221,9 @@ function BookingRow({ booking, onUpdate }) {
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const { totalUnread } = useNotifications();
   const [tab, setTab] = useState('upcoming');
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   const { data, loading, error, refetch } = useApiData(
     () => api.get('/bookings?limit=50'),
@@ -161,8 +268,13 @@ export default function DashboardPage() {
                   Find a tutor
                 </Link>
               )}
-              <Link to="/chat" className="btn-outline btn-sm">
+              <Link to="/chat" className="btn-outline btn-sm relative">
                 Messages
+                {totalUnread > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                    {totalUnread > 9 ? '9+' : totalUnread}
+                  </span>
+                )}
               </Link>
               <Link to="/profile" className="btn-ghost btn-sm">
                 Settings
@@ -237,13 +349,17 @@ export default function DashboardPage() {
             ) : (
               <div>
                 {filtered.map((b) => (
-                  <BookingRow key={b._id} booking={b} onUpdate={refetch} />
+                  <BookingRow key={b._id} booking={b} onUpdate={refetch} onViewDetails={setSelectedBooking} />
                 ))}
               </div>
             )}
           </div>
         </Card>
       </div>
+
+      {selectedBooking && (
+        <BookingDetailsModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} />
+      )}
     </div>
   );
 }

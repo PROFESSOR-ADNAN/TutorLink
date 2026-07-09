@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { SocketProvider } from './context/SocketContext';
+import { NotificationProvider } from './context/NotificationContext';
 import useAuthStore from './context/authStore';
 
 // Layout
@@ -49,6 +50,7 @@ export default function App() {
 
   return (
     <SocketProvider>
+      <NotificationProvider>
       <div className="min-h-screen flex flex-col bg-canvas-100">
         <Navbar />
         <main className="flex-1">
@@ -119,6 +121,7 @@ export default function App() {
         </main>
         <Footer />
       </div>
+      </NotificationProvider>
     </SocketProvider>
   );
 }

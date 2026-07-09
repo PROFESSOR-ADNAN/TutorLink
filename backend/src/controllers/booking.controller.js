@@ -15,6 +15,36 @@ exports.createBooking = catchAsync(async (req, res, next) => {
     return next(new AppError("This tutor is not currently available", 400));
   }
 
+  const newStart = new Date(scheduledAt);
+  const newEnd = new Date(newStart.getTime() + duration * 60 * 1000);
+
+  // ─── Availability check ───────────────────────────────
+  // scheduledAt is treated as a literal UTC instant (see frontend
+  // BookingPage.jsx, which builds it the same way) so the day-of-week and
+  // time-of-day we check here are exactly what the student saw on screen —
+  // no timezone drift between what was displayed and what's enforced.
+  const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const dayName = DAY_NAMES[newStart.getUTCDay()];
+  const toMinutes = (h, m) => h * 60 + m;
+  const startMinutes = toMinutes(newStart.getUTCHours(), newStart.getUTCMinutes());
+  const endMinutes = startMinutes + duration;
+
+  const fitsAvailability = (tutor.availability || []).some((slot) => {
+    if (slot.day !== dayName) return false;
+    const [slotStartH, slotStartM] = slot.startTime.split(":").map(Number);
+    const [slotEndH, slotEndM] = slot.endTime.split(":").map(Number);
+    return startMinutes >= toMinutes(slotStartH, slotStartM) && endMinutes <= toMinutes(slotEndH, slotEndM);
+  });
+
+  if (!fitsAvailability) {
+    return next(
+      new AppError(
+        "This tutor is not available at the selected day/time. Please choose a time within their weekly availability.",
+        400,
+      ),
+    );
+  }
+
   // ─── Overlap check ────────────────────────────────────
   // We need to catch any booking that overlaps with the requested slot.
   // A conflict exists when an existing booking's start is before our end
@@ -23,9 +53,6 @@ exports.createBooking = catchAsync(async (req, res, next) => {
   // Example — existing: 10:00–11:00, new request: 10:30–11:30
   // existing.start (10:00) < newEnd (11:30) ✅
   // existing.end   (11:00) > newStart (10:30) ✅ → conflict
-  const newStart = new Date(scheduledAt);
-  const newEnd = new Date(newStart.getTime() + duration * 60 * 1000);
-
   const conflict = await Booking.findOne({
     tutor: tutorId,
     status: { $in: ["pending", "confirmed"] },
@@ -182,6 +209,14 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
   }
 
   if (status === "cancelled") {
+    if (isTutor && !isAdmin) {
+      return next(
+        new AppError(
+          "Tutors can't cancel a confirmed booking directly. Contact support if you're unable to attend.",
+          403,
+        ),
+      );
+    }
     // Only allow cancelling pending or confirmed bookings
     if (!["pending", "confirmed"].includes(booking.status)) {
       return next(
@@ -191,7 +226,7 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
         ),
       );
     }
-    booking.cancelledBy = isStudent ? "student" : isTutor ? "tutor" : "admin";
+    booking.cancelledBy = isStudent ? "student" : "admin";
     booking.cancelReason = req.body.cancelReason || null;
   }
 

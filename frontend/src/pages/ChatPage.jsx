@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import api from "../services/api";
 import useAuthStore from "../context/authStore";
 import { useSocket } from "../context/SocketContext";
+import { useNotifications } from "../context/NotificationContext";
 import Avatar from "../components/ui/Avatar";
 import ErrorState from "../components/ui/ErrorState";
 
@@ -90,6 +91,7 @@ export default function ChatPage() {
   const location = useLocation();
   const { user } = useAuthStore();
   const socket = useSocket();
+  const { setActiveRoom, markConversationRead } = useNotifications();
 
   // When arriving from a "Message" button on a profile page, the other
   // user's basic info is passed via router state so we can render the chat
@@ -156,6 +158,10 @@ export default function ChatPage() {
     loadMessages(activeUserId).then(() => {
       const conv = conversations.find((c) => c.otherUser?._id === activeUserId);
       if (conv) setActiveUser(conv.otherUser);
+      markConversationRead(activeUserId);
+      setConversations((prev) =>
+        prev.map((c) => (c.otherUser?._id === activeUserId ? { ...c, unreadCount: 0 } : c))
+      );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeUserId]);
@@ -168,18 +174,13 @@ export default function ChatPage() {
     if (conv) setActiveUser(conv.otherUser);
   }, [conversations, activeUserId, activeUser]);
 
-  // Scroll to bottom whenever the message list changes (new message sent/received)
-  // or a different conversation is opened.
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, activeUserId]);
-
   // Socket.IO listeners for the active room
   useEffect(() => {
     if (!socket || !activeUserId || !user?._id) return;
 
     const roomId = [user._id, activeUserId].sort().join("_");
     socket.emit("join_room", roomId);
+    setActiveRoom(roomId);
 
     const handleReceive = (msg) =>
       setMessages((prev) => [...prev, withLocalId(msg)]);
@@ -195,8 +196,9 @@ export default function ChatPage() {
       socket.off("user_typing", handleTyping);
       socket.off("user_stop_typing", handleStopTyping);
       setIsTyping(false);
+      setActiveRoom(null);
     };
-  }, [socket, activeUserId, user?._id]);
+  }, [socket, activeUserId, user?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = async (e) => {
     e.preventDefault();

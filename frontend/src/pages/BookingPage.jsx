@@ -16,6 +16,41 @@ const DURATIONS = [
 ];
 
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const timeToMinutes = (t) => {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+};
+
+// Day-of-week for a plain YYYY-MM-DD string, evaluated at local midnight so
+// it always matches the calendar date the person actually picked.
+const dayNameFor = (dateStr) => DAY_NAMES[new Date(`${dateStr}T00:00:00`).getDay()];
+
+// Which of the fixed TIME_SLOTS actually fit inside one of the tutor's
+// availability windows for the given date, given the chosen session length.
+const getAvailableSlots = (dateStr, duration, availability) => {
+  if (!dateStr || !availability?.length) return [];
+  const daySlots = availability.filter((a) => a.day === dayNameFor(dateStr));
+  if (!daySlots.length) return [];
+  return TIME_SLOTS.filter((t) => {
+    const start = timeToMinutes(t);
+    const end = start + duration;
+    return daySlots.some((slot) => start >= timeToMinutes(slot.startTime) && end <= timeToMinutes(slot.endTime));
+  });
+};
+
+// Earliest upcoming date (within 2 weeks) that falls on a day the tutor is
+// actually available — used as a sane default instead of "tomorrow" blind.
+const findNextAvailableDate = (availability) => {
+  if (!availability?.length) return null;
+  const availableDays = new Set(availability.map((a) => a.day));
+  for (let i = 1; i <= 14; i++) {
+    const d = addDays(new Date(), i);
+    if (availableDays.has(DAY_NAMES[d.getDay()])) return d;
+  }
+  return null;
+};
 
 export default function BookingPage() {
   const { tutorId } = useParams();
@@ -29,7 +64,7 @@ export default function BookingPage() {
   const [form, setForm] = useState({
     subject: '',
     date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
-    time: '10:00',
+    time: '',
     duration: 60,
     studentNotes: '',
   });
@@ -38,16 +73,39 @@ export default function BookingPage() {
     api.get(`/tutors/${tutorId}`)
       .then((d) => {
         setTutor(d.tutor);
-        if (d.tutor.subjects?.[0]) setForm((f) => ({ ...f, subject: d.tutor.subjects[0] }));
+        setForm((f) => {
+          const next = { ...f };
+          if (d.tutor.subjects?.[0]) next.subject = d.tutor.subjects[0];
+          const nextAvailableDate = findNextAvailableDate(d.tutor.availability);
+          if (nextAvailableDate) next.date = format(nextAvailableDate, 'yyyy-MM-dd');
+          const slots = getAvailableSlots(next.date, next.duration, d.tutor.availability);
+          next.time = slots[0] || '';
+          return next;
+        });
       })
-      .catch(console.error)
+      .catch(() => toast.error('Could not load this tutor'))
       .finally(() => setLoading(false));
   }, [tutorId]);
 
+  // Recompute which time slots are actually valid whenever the date or
+  // session length changes, and clear a now-invalid selection.
+  const availableSlots = tutor ? getAvailableSlots(form.date, form.duration, tutor.availability) : [];
+  useEffect(() => {
+    if (form.time && !availableSlots.includes(form.time)) {
+      setForm((f) => ({ ...f, time: availableSlots[0] || '' }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.date, form.duration, tutor]);
+
   const handleBooking = async (e) => {
     e.preventDefault();
+    if (!form.time) return toast.error('Please pick an available time slot');
     try {
-      const scheduledAt = new Date(`${form.date}T${form.time}:00`);
+      // Built as an explicit UTC instant (not the browser's local timezone)
+      // so the day-of-week/time the student sees here is exactly what the
+      // backend checks against the tutor's availability — see
+      // backend/src/controllers/booking.controller.js.
+      const scheduledAt = new Date(`${form.date}T${form.time}:00.000Z`);
       const data = await api.post('/bookings', {
         tutorId,
         subject: form.subject,
@@ -145,27 +203,40 @@ export default function BookingPage() {
               <input type="date" className="input" value={form.date}
                 min={format(addDays(new Date(), 1), 'yyyy-MM-dd')}
                 onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+              {tutor.availability?.length > 0 && (
+                <p className="text-xs text-ink-400 mt-1.5">
+                  Available: {[...new Set(tutor.availability.map((a) => a.day))].join(', ')}
+                </p>
+              )}
             </div>
 
             {/* Time */}
             <div>
               <label className="label">Time</label>
-              <div className="grid grid-cols-5 gap-2">
-                {TIME_SLOTS.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setForm({ ...form, time: t })}
-                    className={`py-2 rounded-xl text-sm font-medium border transition ${
-                      form.time === t
-                        ? 'bg-forest-800 text-white border-forest-800'
-                        : 'bg-white text-ink-600 border-canvas-300 hover:border-forest-300'
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+              {availableSlots.length > 0 ? (
+                <div className="grid grid-cols-5 gap-2">
+                  {availableSlots.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setForm({ ...form, time: t })}
+                      className={`py-2 rounded-xl text-sm font-medium border transition ${
+                        form.time === t
+                          ? 'bg-forest-800 text-white border-forest-800'
+                          : 'bg-white text-ink-600 border-canvas-300 hover:border-forest-300'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gold-50 border border-gold-200 rounded-xl p-3 text-sm text-gold-800">
+                  {tutor.availability?.length > 0
+                    ? `${tutor.user?.name} isn't available on ${dayNameFor(form.date)}s for a ${form.duration}-min session. Try a different date or a shorter session.`
+                    : `${tutor.user?.name} hasn't set their weekly availability yet.`}
+                </div>
+              )}
             </div>
 
             {/* Notes */}
@@ -181,12 +252,12 @@ export default function BookingPage() {
             {/* Price summary */}
             <div className="bg-forest-50 rounded-xl p-4 flex items-center justify-between">
               <div className="text-sm text-forest-800">
-                {form.duration} min · {form.date} at {form.time}
+                {form.duration} min · {form.date}{form.time ? ` at ${form.time}` : ' · pick a time above'}
               </div>
               <div className="text-xl font-display font-bold text-forest-800">${price.toFixed(2)}</div>
             </div>
 
-            <button type="submit" className="btn-primary w-full py-3 text-base">
+            <button type="submit" disabled={!form.time} className="btn-primary w-full py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed">
               Continue to Payment
             </button>
           </form>

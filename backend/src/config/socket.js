@@ -48,8 +48,7 @@ const initSocket = (server) => {
 
     // Handle sending a message
     socket.on('send_message', (data) => {
-      // Emit to everyone in the room EXCEPT the sender
-      socket.to(data.roomId).emit('receive_message', {
+      const payload = {
         ...data,
         sender: {
           _id: socket.user._id,
@@ -57,7 +56,15 @@ const initSocket = (server) => {
           avatar: socket.user.avatar,
         },
         createdAt: new Date(),
-      });
+      };
+      // Emit to everyone in the room EXCEPT the sender
+      socket.to(data.roomId).emit('receive_message', payload);
+      // Also notify the recipient's personal room — this fires regardless
+      // of whether they currently have this conversation open, which is
+      // what powers the navbar/dashboard unread-message badge.
+      if (data.receiverId) {
+        socket.to(data.receiverId).emit('new_message_notification', payload);
+      }
     });
 
     // Typing indicators
