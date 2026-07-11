@@ -73,6 +73,120 @@ exports.rejectTutor = catchAsync(async (req, res, next) => {
   res.status(200).json({ message: "Tutor application rejected" });
 });
 
+// ─── Earnings / financial dashboard ─────────────────────────
+// Powers the admin "Earnings" tab: total platform commission, total paid
+// out to tutors, daily/monthly trend, and a per-tutor breakdown.
+exports.getEarnings = catchAsync(async (req, res, next) => {
+  const paidMatch = { "payment.status": "paid" };
+
+  const [totals, daily, monthly, byTutor] = await Promise.all([
+    // Overall totals
+    Booking.aggregate([
+      { $match: paidMatch },
+      {
+        $group: {
+          _id: null,
+          grossRevenue: { $sum: "$payment.amount" },
+          platformFees: { $sum: "$payment.platformFeeAmount" },
+          tutorPayouts: { $sum: "$payment.tutorPayoutAmount" },
+          paidBookings: { $sum: 1 },
+        },
+      },
+    ]),
+
+    // Daily trend — last 30 days
+    Booking.aggregate([
+      {
+        $match: {
+          ...paidMatch,
+          "payment.paidAt": { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$payment.paidAt" } },
+          grossRevenue: { $sum: "$payment.amount" },
+          platformFees: { $sum: "$payment.platformFeeAmount" },
+          bookings: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+
+    // Monthly trend — last 12 months
+    Booking.aggregate([
+      {
+        $match: {
+          ...paidMatch,
+          "payment.paidAt": { $gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$payment.paidAt" } },
+          grossRevenue: { $sum: "$payment.amount" },
+          platformFees: { $sum: "$payment.platformFeeAmount" },
+          tutorPayouts: { $sum: "$payment.tutorPayoutAmount" },
+          bookings: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+
+    // Per-tutor breakdown — "individual gains"
+    Booking.aggregate([
+      { $match: paidMatch },
+      {
+        $group: {
+          _id: "$tutor",
+          totalPayout: { $sum: "$payment.tutorPayoutAmount" },
+          totalPlatformFee: { $sum: "$payment.platformFeeAmount" },
+          sessionsCompleted: { $sum: 1 },
+        },
+      },
+      { $sort: { totalPayout: -1 } },
+      { $limit: 50 },
+      {
+        $lookup: {
+          from: "tutors",
+          localField: "_id",
+          foreignField: "_id",
+          as: "tutor",
+        },
+      },
+      { $unwind: "$tutor" },
+      {
+        $lookup: {
+          from: "users",
+          localField: "tutor.user",
+          foreignField: "_id",
+          as: "tutorUser",
+        },
+      },
+      { $unwind: "$tutorUser" },
+      {
+        $project: {
+          _id: 0,
+          tutorId: "$_id",
+          name: "$tutorUser.name",
+          avatar: "$tutorUser.avatar",
+          totalPayout: 1,
+          totalPlatformFee: 1,
+          sessionsCompleted: 1,
+        },
+      },
+    ]),
+  ]);
+
+  res.status(200).json({
+    commissionRate: Number(process.env.PLATFORM_COMMISSION_RATE || 0.18),
+    totals: totals[0] || { grossRevenue: 0, platformFees: 0, tutorPayouts: 0, paidBookings: 0 },
+    daily,
+    monthly,
+    byTutor,
+  });
+});
+
 // ─── User management ────────────────────────────────────────
 exports.getUsers = catchAsync(async (req, res, next) => {
   const { role, search, page = 1, limit = 20 } = req.query;

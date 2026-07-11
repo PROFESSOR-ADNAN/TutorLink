@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuthStore from '../context/authStore';
+import AuthSidePanel from '../components/auth/AuthSidePanel';
 import toast from 'react-hot-toast';
 
 export default function RegisterPage() {
@@ -25,65 +26,46 @@ export default function RegisterPage() {
     }
   };
 
+  const strengthColor = (i) => {
+    if (form.password.length < [4, 7, 10][i]) return 'bg-canvas-300';
+    return ['bg-red-500', 'bg-gold-400', 'bg-forest-800'][i];
+  };
+
   return (
     <div className="min-h-[calc(100vh-4rem)] flex bg-canvas-100">
-      {/* Left decorative panel */}
-      <div className="hidden lg:flex flex-1 flex-col justify-between p-12 relative overflow-hidden"
-        style={{ background: '#141410', maxWidth: '440px' }}>
-        <div className="absolute inset-0 bg-grid-canvas opacity-5" />
-        <div className="relative z-10">
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ background: '#1B4332' }}>
+      <AuthSidePanel />
+
+      {/* Right: form */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <Link to="/" className="flex items-center gap-2 mb-8 lg:hidden">
+            <div className="w-7 h-7 rounded-md flex items-center justify-center bg-forest-800">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path d="M3 3h4a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1z" fill="white" fillOpacity="0.9"/>
                 <path d="M9 5h4a1 1 0 011 1v7a1 1 0 01-1 1H9" stroke="white" strokeWidth="1.2" strokeOpacity="0.7" strokeLinecap="round"/>
               </svg>
             </div>
-            <span className="font-serif text-base text-white">TutorLink</span>
+            <span className="font-serif text-base text-ink-900">TutorLink</span>
           </Link>
-        </div>
-        <div className="relative z-10">
-          <div className="flex gap-1 mb-6">
-            {[...Array(5)].map((_, i) => (
-              <svg key={i} className="w-4 h-4" style={{ color: '#D4A017' }} viewBox="0 0 20 20" fill="currentColor">
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-              </svg>
-            ))}
-          </div>
-          <p className="font-serif text-white text-xl leading-snug mb-5">
-            "I found a Python tutor in under 10 minutes. We've been working together for 3 months now."
-          </p>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-forest-800 flex items-center justify-center text-white text-xs font-semibold">BT</div>
-            <div>
-              <div className="text-sm font-medium text-white">Biruk Tadesse</div>
-              <div className="text-xs" style={{ color: 'rgb(255 255 255 / 0.45)' }}>Programming student, Addis Ababa</div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Right: form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
-          <h1 className="font-serif text-ink-900 mb-1" style={{ fontSize: '1.75rem' }}>Create your account</h1>
+          <h1 className="font-serif text-ink-900 mb-1 text-[1.75rem]">Create your account</h1>
           <p className="font-sans text-sm text-ink-400 mb-8">Free to join. No credit card required.</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Role toggle */}
             <div>
               <label className="label">I want to…</label>
-              <div className="grid grid-cols-2 gap-2 p-1 rounded-xl" style={{ background: '#EAEAE3' }}>
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-canvas-200">
                 {[
                   { value: 'student', label: 'Find a tutor', icon: '📚' },
                   { value: 'tutor',   label: 'Teach students', icon: '🎓' },
                 ].map(({ value, label, icon }) => (
                   <button key={value} type="button" onClick={() => setForm({ ...form, role: value })}
-                    className="py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-150 flex items-center justify-center gap-2"
-                    style={form.role === value
-                      ? { background: '#fff', color: '#1B4332', boxShadow: '0 1px 3px rgb(0 0 0 / 0.1)' }
-                      : { background: 'transparent', color: '#6B6B61' }
-                    }
+                    className={`py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-150 flex items-center justify-center gap-2 ${
+                      form.role === value
+                        ? 'bg-surface text-accent shadow-sm'
+                        : 'bg-transparent text-ink-500'
+                    }`}
                   >
                     <span>{icon}</span> {label}
                   </button>
@@ -121,12 +103,11 @@ export default function RegisterPage() {
               </div>
               {/* Strength bar */}
               {form.password.length > 0 && (
-                <div className="flex gap-1 mt-2">
-                  {[4, 7, 10].map((threshold, i) => (
-                    <div key={i} className="h-1 flex-1 rounded-full transition-all duration-300"
-                      style={{ background: form.password.length >= threshold ? (i === 0 ? '#ef4444' : i === 1 ? '#D4A017' : '#1B4332') : '#EAEAE3' }} />
+                <div className="flex gap-1 mt-2 items-center">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-300 ${strengthColor(i)}`} />
                   ))}
-                  <span className="text-xs ml-1" style={{ color: '#8C8C82' }}>
+                  <span className="text-xs ml-1 text-ink-400">
                     {form.password.length < 4 ? 'Weak' : form.password.length < 7 ? 'Fair' : form.password.length < 10 ? 'Good' : 'Strong'}
                   </span>
                 </div>

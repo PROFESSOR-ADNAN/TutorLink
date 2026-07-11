@@ -8,6 +8,7 @@ const {
   getUsers,
   setUserActive,
   getRecentBookings,
+  getEarnings,
 } = require("../controllers/admin.controller");
 
 // Every route below requires a logged-in admin — same session-cookie auth
@@ -18,6 +19,7 @@ const {
 router.use(protect, restrictTo("admin"));
 
 router.get("/stats", getStats);
+router.get("/earnings", getEarnings);
 
 router.get("/tutors/pending", getPendingTutors);
 router.patch("/tutors/:id/approve", approveTutor);

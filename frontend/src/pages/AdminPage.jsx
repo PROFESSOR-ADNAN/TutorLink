@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 import useApiData from '../hooks/useApiData';
 import Avatar from '../components/ui/Avatar';
@@ -12,6 +14,7 @@ import { SkeletonRows } from '../components/ui/Skeleton';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
+  { key: 'earnings', label: 'Earnings' },
   { key: 'approvals', label: 'Tutor Approvals' },
   { key: 'users', label: 'Users' },
   { key: 'bookings', label: 'Bookings' },
@@ -59,6 +62,124 @@ function OverviewTab() {
             </span>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EarningsTab() {
+  const { data, loading, error, refetch } = useApiData(() => api.get('/admin/earnings'), []);
+  const [range, setRange] = useState('daily'); // 'daily' | 'monthly'
+
+  if (loading) return <SkeletonRows count={4} />;
+  if (error) return <ErrorState message={error} onRetry={refetch} />;
+
+  const { totals, daily, monthly, byTutor, commissionRate } = data;
+  const chartData = (range === 'daily' ? daily : monthly).map((d) => ({
+    label: range === 'daily' ? format(new Date(d._id), 'MMM d') : format(new Date(`${d._id}-01`), 'MMM yyyy'),
+    'Platform commission': +(d.platformFees / 100).toFixed(2),
+    'Gross revenue': +(d.grossRevenue / 100).toFixed(2),
+  }));
+
+  return (
+    <div className="space-y-6">
+      {/* Top-line totals */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard
+          label="Platform commission"
+          value={`$${(totals.platformFees / 100).toFixed(2)}`}
+          hint={`${(commissionRate * 100).toFixed(0)}% of gross revenue`}
+        />
+        <StatCard label="Gross revenue" value={`$${(totals.grossRevenue / 100).toFixed(2)}`} hint="total charged to students" />
+        <StatCard label="Paid to tutors" value={`$${(totals.tutorPayouts / 100).toFixed(2)}`} hint="via Stripe Connect" />
+        <StatCard label="Paid bookings" value={totals.paidBookings} />
+      </div>
+
+      {/* Trend chart */}
+      <div className="card p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-sans font-semibold text-sm text-ink-900">Revenue & commission over time</h3>
+          <div className="flex gap-1 bg-canvas-200 rounded-lg p-1">
+            {['daily', 'monthly'].map((r) => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${
+                  range === r ? 'bg-surface text-ink-900 shadow-sm' : 'text-ink-500'
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {chartData.length === 0 ? (
+          <EmptyState title="No paid bookings yet" description="Revenue will show up here once sessions are paid for." />
+        ) : (
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+              <defs>
+                <linearGradient id="grossFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#8fbfaa" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#8fbfaa" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="feeFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#D4A017" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#D4A017" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--canvas-300))" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'rgb(var(--ink-400))' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: 'rgb(var(--ink-400))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+              <Tooltip
+                formatter={(v) => `$${v.toFixed(2)}`}
+                contentStyle={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--canvas-300))', borderRadius: 8, fontSize: 12 }}
+              />
+              <Area type="monotone" dataKey="Gross revenue" stroke="#2d6652" fill="url(#grossFill)" strokeWidth={2} />
+              <Area type="monotone" dataKey="Platform commission" stroke="#D4A017" fill="url(#feeFill)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Per-tutor breakdown — "individual gains" */}
+      <div className="card overflow-hidden">
+        <div className="px-5 py-4 border-b border-canvas-200">
+          <h3 className="font-sans font-semibold text-sm text-ink-900">Earnings by tutor</h3>
+          <p className="text-xs text-ink-400 mt-0.5">What each tutor has earned, and what TutorLink kept in commission from them.</p>
+        </div>
+        {byTutor.length === 0 ? (
+          <EmptyState title="No tutor earnings yet" />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-canvas-200">
+                  <th className="px-5 py-3">Tutor</th>
+                  <th className="px-5 py-3">Sessions</th>
+                  <th className="px-5 py-3">Tutor earned</th>
+                  <th className="px-5 py-3">Platform kept</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-canvas-200">
+                {byTutor.map((t) => (
+                  <tr key={t.tutorId}>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <Avatar src={t.avatar} name={t.name} size="sm" />
+                        <span className="font-medium text-ink-900">{t.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-ink-600">{t.sessionsCompleted}</td>
+                    <td className="px-5 py-3 font-medium text-ink-900">${(t.totalPayout / 100).toFixed(2)}</td>
+                    <td className="px-5 py-3 text-ink-500">${(t.totalPlatformFee / 100).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -182,6 +303,13 @@ function UsersTab() {
                   {u.isActive ? 'Suspend' : 'Reactivate'}
                 </Button>
               )}
+              <Link
+                to={`/chat/${u._id}`}
+                state={{ otherUser: { _id: u._id, name: u.name, avatar: u.avatar } }}
+                className="btn-outline btn-sm flex-shrink-0"
+              >
+                Message
+              </Link>
             </div>
           ))}
         </div>
@@ -264,6 +392,7 @@ export default function AdminPage() {
       </div>
 
       {tab === 'overview' && <OverviewTab />}
+      {tab === 'earnings' && <EarningsTab />}
       {tab === 'approvals' && <ApprovalsTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'bookings' && <BookingsTab />}

@@ -19,7 +19,7 @@ function initials(name = '') {
  * so a missing avatar never shows a broken image icon.
  */
 export default function Avatar({ src, name, size = 'md', ring = false, className = '' }) {
-  const base = `${SIZES[size] || SIZES.md} rounded-xl object-cover flex-shrink-0 ${ring ? 'ring-4 ring-white' : ''} ${className}`;
+  const base = `${SIZES[size] || SIZES.md} rounded-xl object-cover flex-shrink-0 ${ring ? 'ring-4 ring-surface' : ''} ${className}`;
 
   if (!src) {
     return (

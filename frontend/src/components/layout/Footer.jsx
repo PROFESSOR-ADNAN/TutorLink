@@ -18,7 +18,7 @@ function StatusIndicator() {
   }, []);
 
   const config = {
-    checking: { color: 'bg-canvas-300', text: 'Checking status…' },
+    checking: { color: 'bg-canvas-400', text: 'Checking status…' },
     ok: { color: 'bg-green-400', text: 'All systems operational' },
     down: { color: 'bg-red-400', text: 'Some services may be unavailable' },
   }[status];
@@ -26,7 +26,7 @@ function StatusIndicator() {
   return (
     <div className="flex items-center gap-1.5">
       <span className={`w-1.5 h-1.5 rounded-full ${config.color} ${status === 'checking' ? 'animate-pulse' : ''}`} />
-      <span className="text-xs" style={{ color: 'rgb(255 255 255 / 0.35)' }}>{config.text}</span>
+      <span className="text-xs text-ink-400">{config.text}</span>
     </div>
   );
 }
@@ -40,54 +40,52 @@ export default function Footer() {
   ];
 
   return (
-    <footer style={{ background: '#141410', borderTop: '1px solid #2D2D26' }}>
+    // Follows the same canvas/ink theme variables as the rest of the site,
+    // so it inverts cleanly with light/dark mode instead of being a
+    // permanently-dark band that clashes with a light page.
+    <footer className="bg-canvas-50 border-t border-canvas-300">
       <div className="section py-14">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ background: '#1B4332' }}>
+              <div className="w-7 h-7 rounded-md flex items-center justify-center bg-forest-800">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                   <path d="M3 3h4a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1z" fill="white" fillOpacity="0.9"/>
                   <path d="M9 5h4a1 1 0 011 1v7a1 1 0 01-1 1H9" stroke="white" strokeWidth="1.2" strokeOpacity="0.7" strokeLinecap="round"/>
                 </svg>
               </div>
-              <span className="font-serif text-base text-white">TutorLink</span>
+              <span className="font-serif text-base text-ink-900">TutorLink</span>
             </Link>
-            <p className="text-xs leading-relaxed" style={{ color: 'rgb(255 255 255 / 0.4)', maxWidth: '22ch' }}>
+            <p className="text-xs leading-relaxed text-ink-400" style={{ maxWidth: '22ch' }}>
               Expert tutoring, on demand. Learn live with verified tutors.
             </p>
           </div>
 
           <div>
-            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4"
-              style={{ color: 'rgb(255 255 255 / 0.35)' }}>Platform</h4>
+            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4 text-ink-400">Platform</h4>
             <ul className="space-y-2.5">
               {platformLinks.map(({ to, label }) => (
                 <li key={label}>
-                  <Link to={to} className="text-sm transition-colors hover:text-white"
-                    style={{ color: 'rgb(255 255 255 / 0.5)' }}>{label}</Link>
+                  <Link to={to} className="text-sm text-ink-500 transition-colors hover:text-ink-900">{label}</Link>
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4"
-              style={{ color: 'rgb(255 255 255 / 0.35)' }}>Subjects</h4>
+            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4 text-ink-400">Subjects</h4>
             <ul className="space-y-2.5">
               {['Mathematics', 'Programming', 'Physics', 'English', 'Chemistry'].map(s => (
                 <li key={s}>
-                  <Link to={`/tutors?subject=${s}`} className="text-sm transition-colors hover:text-white"
-                    style={{ color: 'rgb(255 255 255 / 0.5)' }}>{s}</Link>
+                  <Link to={`/tutors?subject=${s}`} className="text-sm text-ink-500 transition-colors hover:text-ink-900">{s}</Link>
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4"
-              style={{ color: 'rgb(255 255 255 / 0.35)' }}>Support</h4>
+            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4 text-ink-400">Support</h4>
             <ul className="space-y-2.5">
               {[
                 { to: '/contact', label: 'Contact' },
@@ -95,17 +93,15 @@ export default function Footer() {
                 { to: '/terms',   label: 'Terms of Service' },
               ].map(({ to, label }) => (
                 <li key={label}>
-                  <Link to={to} className="text-sm transition-colors hover:text-white"
-                    style={{ color: 'rgb(255 255 255 / 0.5)' }}>{label}</Link>
+                  <Link to={to} className="text-sm text-ink-500 transition-colors hover:text-ink-900">{label}</Link>
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        <div className="mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3"
-          style={{ borderTop: '1px solid #2D2D26' }}>
-          <p className="text-xs" style={{ color: 'rgb(255 255 255 / 0.25)' }}>
+        <div className="mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-canvas-300">
+          <p className="text-xs text-ink-400">
             © {new Date().getFullYear()} TutorLink. All rights reserved.
           </p>
           <StatusIndicator />

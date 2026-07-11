@@ -8,7 +8,9 @@ const systemPrefersDark = () => window.matchMedia('(prefers-color-scheme: dark)'
 const resolveIsDark = (mode) => (mode === 'system' ? systemPrefersDark() : mode === 'dark');
 
 export function ThemeProvider({ children }) {
-  const [mode, setMode] = useState(() => localStorage.getItem(STORAGE_KEY) || 'system');
+  // Light is TutorLink's system default — we don't follow the OS preference
+  // by default, only what the person explicitly picks (or already picked).
+  const [mode, setMode] = useState(() => localStorage.getItem(STORAGE_KEY) || 'light');
 
   const applyTheme = useCallback((m) => {
     document.documentElement.classList.toggle('dark', resolveIsDark(m));

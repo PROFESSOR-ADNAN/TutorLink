@@ -28,11 +28,15 @@
   }
 
   .dark {
-    --canvas-50:  38 38 34;
-    --canvas-100: 22 22 20;
-    --canvas-200: 30 30 27;
-    --canvas-300: 44 44 39;
-    --canvas-400: 64 64 56;
+    /* Ascending brightness as the scale goes up, mirroring how light mode
+       ascends in darkness — canvas-100 is the base page background,
+       200/300/400 step progressively lighter for hover states, chips,
+       and borders so they stay visible against the page and against cards. */
+    --canvas-50:  20 20 18;
+    --canvas-100: 26 26 23;
+    --canvas-200: 38 38 34;
+    --canvas-300: 54 54 47;
+    --canvas-400: 76 76 66;
 
     --ink-900: 240 240 235;
     --ink-800: 222 222 214;
@@ -42,7 +46,9 @@
     --ink-400: 152 152 140;
     --ink-300: 110 110 100;
 
-    --surface: 32 32 29;
+    /* Cards/navbar/modals — deliberately lighter than canvas-100 (page bg)
+       so elevated surfaces read as "raised" the way shadows do in light mode. */
+    --surface: 34 34 30;
 
     --accent: 143 191 170; /* forest-300 — readable on a dark background */
   }

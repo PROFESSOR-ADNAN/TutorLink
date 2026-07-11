@@ -224,8 +224,8 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
-      socket?.emit("send_message", { roomId, content, receiverId: activeUserId });
       await api.post("/chat", { receiverId: activeUserId, content });
+      socket?.emit("send_message", { roomId, content, receiverId: activeUserId });
       // First message in a brand-new thread — refresh the sidebar so it appears there too
       if (!conversations.some((c) => c.otherUser?._id === activeUserId)) {
         loadConversations();

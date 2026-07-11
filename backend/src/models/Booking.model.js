@@ -33,7 +33,7 @@ const bookingSchema = new mongoose.Schema(
     },
     // Payment info — linked to Stripe
     payment: {
-      amount: { type: Number, required: true }, // in cents
+      amount: { type: Number, required: true }, // total charged to student, in cents
       currency: { type: String, default: 'usd' },
       stripePaymentIntentId: String,
       stripeChargeId: String,
@@ -42,6 +42,11 @@ const bookingSchema = new mongoose.Schema(
         enum: ['unpaid', 'paid', 'refunded'],
         default: 'unpaid',
       },
+      // Commission split (Stripe Connect "destination charge") — set when
+      // the PaymentIntent is created, so we know the breakdown even before
+      // it's paid; confirmed again from the webhook once payment succeeds.
+      platformFeeAmount: { type: Number, default: 0 }, // cents kept by TutorLink
+      tutorPayoutAmount: { type: Number, default: 0 }, // cents transferred to the tutor
       paidAt: Date,
       refundedAt: Date,
     },

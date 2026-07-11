@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import useAuthStore from '../context/authStore';
@@ -18,6 +18,7 @@ const LANGUAGES_LIST = ['English', 'Amharic', 'Arabic', 'French', 'Spanish', 'Or
 const NAV_ITEMS = [
   { key: 'personal', label: 'Personal Info', icon: '👤' },
   { key: 'tutor', label: 'Tutor Profile', icon: '🎓', tutorOnly: true },
+  { key: 'payouts', label: 'Payouts', icon: '💳', tutorOnly: true },
   { key: 'security', label: 'Password & Security', icon: '🔒' },
 ];
 
@@ -110,9 +111,14 @@ function SectionCard({ title, action, children }) {
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore();
+  const [searchParams] = useSearchParams();
   const [mode, setMode] = useState('view'); // 'view' | 'edit' — LinkedIn-style read profile by default
-  const [tab, setTab] = useState('personal');
+  const [tab, setTab] = useState(searchParams.get('tab') === 'payouts' ? 'payouts' : 'personal');
   const [saving, setSaving] = useState(false);
+
+  const [payoutStatus, setPayoutStatus] = useState(null); // { connected, payoutsEnabled }
+  const [loadingPayoutStatus, setLoadingPayoutStatus] = useState(false);
+  const [startingOnboarding, setStartingOnboarding] = useState(false);
 
   const [personal, setPersonal] = useState({
     name: user?.name || '',
@@ -157,6 +163,31 @@ export default function ProfilePage() {
   const coverInputRef = useRef(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+
+  // Load Stripe Connect payout status for tutors. Also re-checks when
+  // landing back here from Stripe's hosted onboarding flow (return_url
+  // includes ?onboarded=1), since Stripe doesn't push completion to us —
+  // we have to ask.
+  useEffect(() => {
+    if (user?.role !== 'tutor') return;
+    setLoadingPayoutStatus(true);
+    api
+      .get('/payments/connect/status')
+      .then(setPayoutStatus)
+      .catch(() => setPayoutStatus({ connected: false, payoutsEnabled: false }))
+      .finally(() => setLoadingPayoutStatus(false));
+  }, [user?.role, searchParams]);
+
+  const handleStartOnboarding = async () => {
+    setStartingOnboarding(true);
+    try {
+      const { url } = await api.post('/payments/connect/onboard');
+      window.location.href = url; // Stripe-hosted flow, redirects back to ?tab=payouts&onboarded=1
+    } catch (err) {
+      toast.error(err.message || 'Could not start payout setup');
+      setStartingOnboarding(false);
+    }
+  };
 
   const handleAvatarSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -786,6 +817,61 @@ export default function ProfilePage() {
                     </div>
                   </form>
                 )
+              )}
+
+              {tab === 'payouts' && user?.role === 'tutor' && (
+                <Card padding="lg" className="space-y-5 max-w-lg">
+                  <div>
+                    <h2 className="font-sans font-semibold text-ink-900 text-base mb-1">Payouts</h2>
+                    <p className="text-sm text-ink-400">
+                      TutorLink uses Stripe to pay you directly after each session. You need to finish this
+                      one-time setup before students can book and pay you.
+                    </p>
+                  </div>
+
+                  {loadingPayoutStatus ? (
+                    <Skeleton className="h-16 w-full" />
+                  ) : payoutStatus?.payoutsEnabled ? (
+                    <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                      <span className="text-lg">✅</span>
+                      <div>
+                        <p className="text-sm font-medium text-emerald-800">Payouts are active</p>
+                        <p className="text-xs text-emerald-700 mt-0.5">
+                          Stripe automatically sends your share to your bank account after each paid session.
+                        </p>
+                      </div>
+                    </div>
+                  ) : payoutStatus?.connected ? (
+                    <div className="flex items-start gap-3 bg-gold-50 border border-gold-200 rounded-xl p-4">
+                      <span className="text-lg">⏳</span>
+                      <div>
+                        <p className="text-sm font-medium text-gold-800">Setup started, not finished yet</p>
+                        <p className="text-xs text-gold-700 mt-0.5">
+                          Stripe still needs a bit more information from you before payouts can turn on.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3 bg-canvas-100 border border-canvas-300 rounded-xl p-4">
+                      <span className="text-lg">💳</span>
+                      <div>
+                        <p className="text-sm font-medium text-ink-900">Payouts aren't set up yet</p>
+                        <p className="text-xs text-ink-500 mt-0.5">
+                          You won't be bookable until this is complete — it only takes a few minutes.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <Button onClick={handleStartOnboarding} loading={startingOnboarding}>
+                    {payoutStatus?.connected ? 'Continue payout setup' : 'Set up payouts'}
+                  </Button>
+
+                  <p className="text-xs text-ink-400 pt-2 border-t border-canvas-200">
+                    TutorLink keeps a platform commission on each paid session; the rest is transferred to you
+                    automatically — no manual invoicing required.
+                  </p>
+                </Card>
               )}
 
               {tab === 'security' && (

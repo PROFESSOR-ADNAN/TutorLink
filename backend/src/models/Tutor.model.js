@@ -84,6 +84,16 @@ const tutorSchema = new mongoose.Schema(
         uploadedAt: { type: Date, default: Date.now },
       },
     ],
+    // ─── Stripe Connect (payouts) ───────────────────────────
+    // A tutor must complete Connect onboarding before they can be booked —
+    // this is how we're able to split payment automatically at charge time
+    // (platform commission vs. tutor payout) instead of holding funds
+    // ourselves and manually paying tutors out later.
+    stripeAccountId: String,
+    payoutsEnabled: {
+      type: Boolean,
+      default: false, // flipped true once Stripe confirms onboarding is complete
+    },
   },
   {
     timestamps: true,

@@ -26,7 +26,7 @@ function TutorCard({ tutor }) {
         <div className="flex items-start gap-4 mb-4">
           <div className="relative flex-shrink-0">
             <Avatar src={tutor.user?.avatar} name={tutor.user?.name} size="md" />
-            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full ring-2 ring-white" />
+            <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full ring-2 ring-surface" />
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-sans font-semibold text-ink-900 text-sm leading-tight truncate group-hover:text-accent transition-colors">
@@ -70,7 +70,7 @@ function TutorCard({ tutor }) {
             <span className="text-ink-200">·</span>
             <span>{tutor.languages?.[0] || 'English'}</span>
           </div>
-          <span className="text-xs font-medium transition-colors" style={{ color: '#1B4332' }}>
+          <span className="text-xs font-medium text-accent transition-colors">
             View profile →
           </span>
         </div>
@@ -143,11 +143,11 @@ export default function TutorsPage() {
   const hasFilters = filters.subject || filters.minRate || filters.maxRate || filters.minRating;
 
   return (
-    <div className="min-h-screen" style={{ background: '#FAFAF7' }}>
+    <div className="min-h-screen bg-canvas-100">
       {/* Page header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #EAEAE3' }}>
+      <div className="bg-surface border-b border-canvas-300">
         <div className="section py-8">
-          <h1 className="font-serif text-ink-900 mb-1" style={{ fontSize: '1.75rem' }}>Find a Tutor</h1>
+          <h1 className="font-serif text-ink-900 mb-1 text-[1.75rem]">Find a Tutor</h1>
           <p className="text-sm text-ink-400">
             {loading ? 'Loading…' : `${pagination.total || 0} verified tutors available`}
           </p>
@@ -184,11 +184,9 @@ export default function TutorsPage() {
                   <div className="space-y-1">
                     {[['', 'Any'], ['3', '3+ ★'], ['4', '4+ ★'], ['4.5', '4.5+ ★']].map(([val, label]) => (
                       <button key={val} onClick={() => setFilters({ ...filters, minRating: val })}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all"
-                        style={filters.minRating === val
-                          ? { background: '#f0f7f4', color: '#1B4332', fontWeight: 500 }
-                          : { color: '#4A4A42' }
-                        }>
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${
+                          filters.minRating === val ? 'bg-forest-50 text-accent font-medium' : 'text-ink-600'
+                        }`}>
                         <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${filters.minRating === val ? 'border-forest-800 bg-forest-800' : 'border-canvas-400'}`} />
                         {label}
                       </button>
@@ -228,8 +226,7 @@ export default function TutorsPage() {
               </div>
             ) : tutors.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
-                  style={{ background: '#F4F4EF' }}>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5 bg-canvas-200">
                   <svg className="w-8 h-8 text-ink-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                   </svg>
@@ -250,11 +247,11 @@ export default function TutorsPage() {
                       className="btn-outline btn-sm disabled:opacity-40">← Prev</button>
                     {[...Array(pagination.pages)].map((_, i) => (
                       <button key={i} onClick={() => fetchTutors(i + 1)}
-                        className="w-9 h-9 rounded-lg text-sm font-medium transition-all"
-                        style={currentPage === i + 1
-                          ? { background: '#1B4332', color: '#fff' }
-                          : { background: '#fff', color: '#4A4A42', border: '1px solid #EAEAE3' }
-                        }>
+                        className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                          currentPage === i + 1
+                            ? 'bg-forest-800 text-white'
+                            : 'bg-surface text-ink-600 border border-canvas-300'
+                        }`}>
                         {i + 1}
                       </button>
                     ))}

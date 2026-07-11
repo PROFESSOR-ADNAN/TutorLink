@@ -45,9 +45,9 @@ export default function TutorProfilePage() {
   );
 
   return (
-    <div className="min-h-screen" style={{ background: '#FAFAF7' }}>
+    <div className="min-h-screen bg-canvas-100">
       {/* Hero strip */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #EAEAE3' }}>
+      <div className="bg-surface border-b border-canvas-300">
         <div className="section py-8">
           <Link to="/tutors" className="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 transition-colors mb-6">
             ← All tutors
@@ -55,7 +55,7 @@ export default function TutorProfilePage() {
           <div className="flex flex-col sm:flex-row gap-6 items-start">
             <div className="relative flex-shrink-0">
               <Avatar src={tutor.user?.avatar} name={tutor.user?.name} size="xl" className="!w-20 !h-20 !rounded-2xl" />
-              <span className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-green-400 rounded-full ring-2 ring-white" />
+              <span className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-green-400 rounded-full ring-2 ring-surface" />
             </div>
             <div className="flex-1">
               <h1 className="font-serif text-ink-900 mb-0.5" style={{ fontSize: '1.75rem' }}>{tutor.user?.name}</h1>
@@ -154,7 +154,7 @@ export default function TutorProfilePage() {
             ) : (
               <div className="space-y-5">
                 {reviews.map(review => (
-                  <div key={review._id} className="flex gap-4 pb-5 last:pb-0" style={{ borderBottom: '1px solid #F4F4EF' }}>
+                  <div key={review._id} className="flex gap-4 pb-5 last:pb-0 border-b border-canvas-200">
                     <Avatar src={review.student?.avatar} name={review.student?.name} size="sm" className="mt-0.5" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1.5">

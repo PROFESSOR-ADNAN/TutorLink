@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import useAuthStore from '../../context/authStore';
 import { useNotifications } from '../../context/NotificationContext';
 import Avatar from '../ui/Avatar';
+import ThemeToggle from './ThemeToggle';
 import toast from 'react-hot-toast';
 
 function NotificationBell() {
@@ -174,12 +175,13 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-2 flex-shrink-0">
           {isAuthenticated ? (
             <div className="flex items-center gap-1">
+              <ThemeToggle />
               <NotificationBell />
               <SettingsButton />
               <Link to="/profile" className="flex items-center gap-2.5 group pl-2">
                 <div className="relative">
                   <Avatar src={user?.avatar} name={user?.name} size="sm" className="ring-2 ring-canvas-300 group-hover:ring-forest-300 transition-all" />
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-white" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-surface" />
                 </div>
                 <span className="text-sm font-medium text-ink-700 group-hover:text-ink-900 transition-colors">
                   {user?.name?.split(' ')[0]}
@@ -189,6 +191,7 @@ export default function Navbar() {
             </div>
           ) : (
             <>
+              <ThemeToggle />
               <Link to="/login" className="btn-ghost btn-sm">Log in</Link>
               <Link to="/register" className="btn-primary btn-sm">Get started</Link>
             </>
@@ -218,6 +221,10 @@ export default function Navbar() {
       {menuOpen && (
         <div className="md:hidden border-t border-canvas-300 bg-surface">
           <div className="section py-3 space-y-0.5">
+            <div className="flex items-center justify-between px-3 py-2.5">
+              <span className="text-sm font-medium text-ink-500">Appearance</span>
+              <ThemeToggle />
+            </div>
             <Link to="/tutors" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">
               Find Tutors
             </Link>

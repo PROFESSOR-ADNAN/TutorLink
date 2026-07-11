@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../context/authStore';
+import AuthSidePanel from '../components/auth/AuthSidePanel';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
@@ -35,30 +36,13 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex bg-canvas-100">
-      {/* Left panel — decorative */}
-      <div className="hidden lg:flex flex-1 items-end p-12 relative overflow-hidden"
-        style={{ background: '#1B4332', maxWidth: '440px' }}>
-        <div className="absolute inset-0 bg-grid-canvas opacity-5" />
-        <div className="relative z-10">
-          <div className="font-serif text-white mb-4" style={{ fontSize: '2rem', lineHeight: 1.15 }}>
-            "My grades went from a C to an A in just three weeks."
-          </div>
-          <div className="flex items-center gap-3 mt-6">
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold text-white"
-              style={{ background: '#2d6652' }}>SA</div>
-            <div>
-              <div className="text-sm font-medium text-white">Sara Almaz</div>
-              <div className="text-xs" style={{ color: 'rgb(255 255 255 / 0.5)' }}>Mathematics student</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AuthSidePanel />
 
       {/* Right panel — form */}
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <Link to="/" className="flex items-center gap-2 mb-10">
-            <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ background: '#1B4332' }}>
+          <Link to="/" className="flex items-center gap-2 mb-10 lg:hidden">
+            <div className="w-7 h-7 rounded-md flex items-center justify-center bg-forest-800">
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path d="M3 3h4a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1z" fill="white" fillOpacity="0.9"/>
                 <path d="M9 5h4a1 1 0 011 1v7a1 1 0 01-1 1H9" stroke="white" strokeWidth="1.2" strokeOpacity="0.7" strokeLinecap="round"/>
@@ -67,7 +51,7 @@ export default function LoginPage() {
             <span className="font-serif text-base text-ink-900">TutorLink</span>
           </Link>
 
-          <h1 className="font-serif text-ink-900 mb-1" style={{ fontSize: '1.75rem' }}>Welcome back</h1>
+          <h1 className="font-serif text-ink-900 mb-1 text-[1.75rem]">Welcome back</h1>
           <p className="font-sans text-sm text-ink-400 mb-8">Log in to your account</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -80,8 +64,9 @@ export default function LoginPage() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="label mb-0">Password</label>
-                <Link to="/forgot-password" className="text-xs font-medium transition-colors"
-                  style={{ color: '#1B4332' }}>Forgot?</Link>
+                <Link to="/forgot-password" className="text-xs font-medium text-accent transition-colors">
+                  Forgot?
+                </Link>
               </div>
               <div className="relative">
                 <input
