@@ -77,12 +77,29 @@ function NotificationBell() {
               ))}
             </div>
           )}
-          <Link to="/chat" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-center text-xs font-semibold text-forest-800 hover:bg-canvas-100 border-t border-canvas-200">
+          <Link to="/chat" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-center text-xs font-semibold text-accent hover:bg-canvas-100 border-t border-canvas-200">
             View all messages
           </Link>
         </div>
       )}
     </div>
+  );
+}
+
+function SettingsButton() {
+  return (
+    <Link
+      to="/settings"
+      className="p-2 rounded-lg text-ink-500 hover:text-ink-900 hover:bg-canvas-200 transition-colors"
+      aria-label="Settings"
+      title="Settings"
+    >
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <circle cx="12" cy="12" r="3" strokeWidth={1.8} />
+      </svg>
+    </Link>
   );
 }
 
@@ -112,7 +129,7 @@ export default function Navbar() {
   const navLink = ({ isActive }) =>
     `relative px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-150 ${
       isActive
-        ? 'text-forest-800'
+        ? 'text-accent'
         : 'text-ink-500 hover:text-ink-900'
     }`;
 
@@ -120,7 +137,7 @@ export default function Navbar() {
     <header
       className={`sticky top-0 z-50 transition-all duration-200 ${
         scrolled
-          ? 'bg-white/95 backdrop-blur-md border-b border-canvas-300 shadow-xs'
+          ? 'bg-surface/95 backdrop-blur-md border-b border-canvas-300 shadow-xs'
           : 'bg-canvas-100 border-b border-canvas-200'
       }`}
     >
@@ -148,6 +165,7 @@ export default function Navbar() {
             <>
               <NavLink to="/dashboard" className={navLink}>Dashboard</NavLink>
               <NavLink to="/chat" className={navLink}>Messages</NavLink>
+              {user?.role === 'admin' && <NavLink to="/admin" className={navLink}>Admin</NavLink>}
             </>
           )}
         </div>
@@ -157,6 +175,7 @@ export default function Navbar() {
           {isAuthenticated ? (
             <div className="flex items-center gap-1">
               <NotificationBell />
+              <SettingsButton />
               <Link to="/profile" className="flex items-center gap-2.5 group pl-2">
                 <div className="relative">
                   <Avatar src={user?.avatar} name={user?.name} size="sm" className="ring-2 ring-canvas-300 group-hover:ring-forest-300 transition-all" />
@@ -197,7 +216,7 @@ export default function Navbar() {
 
       {/* Mobile drawer */}
       {menuOpen && (
-        <div className="md:hidden border-t border-canvas-300 bg-white">
+        <div className="md:hidden border-t border-canvas-300 bg-surface">
           <div className="section py-3 space-y-0.5">
             <Link to="/tutors" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">
               Find Tutors
@@ -214,6 +233,10 @@ export default function Navbar() {
                   )}
                 </Link>
                 <Link to="/profile" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">Profile</Link>
+                <Link to="/settings" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">Settings</Link>
+                {user?.role === 'admin' && (
+                  <Link to="/admin" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">Admin</Link>
+                )}
                 <div className="pt-2 mt-2 border-t border-canvas-200">
                   <button onClick={handleLogout} className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
                     Sign out

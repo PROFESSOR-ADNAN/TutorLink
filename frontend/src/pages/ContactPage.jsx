@@ -18,7 +18,7 @@ export default function ContactPage() {
       <p className="text-ink-600 mb-10">
         Questions, feedback, or an issue with a booking? Fill this out and it'll open in your email app addressed to our
         support team, or write to us directly at{' '}
-        <a href={`mailto:${SUPPORT_EMAIL}`} className="text-forest-800 font-medium hover:underline">
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="text-accent font-medium hover:underline">
           {SUPPORT_EMAIL}
         </a>.
       </p>

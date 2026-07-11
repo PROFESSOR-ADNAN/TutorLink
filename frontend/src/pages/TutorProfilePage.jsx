@@ -121,7 +121,7 @@ export default function TutorProfilePage() {
               { label: 'Languages', value: tutor.languages?.length || 1 },
             ].map(({ label, value }) => (
               <div key={label} className="card p-4 text-center">
-                <div className="font-serif text-2xl text-forest-800 mb-0.5">{value}</div>
+                <div className="font-serif text-2xl text-accent mb-0.5">{value}</div>
                 <div className="text-xs text-ink-400 font-medium">{label}</div>
               </div>
             ))}

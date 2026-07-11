@@ -188,7 +188,7 @@ export default function BookingPage() {
                     className={`py-2.5 rounded-xl text-sm font-medium border transition ${
                       form.duration === value
                         ? 'bg-forest-800 text-white border-forest-800'
-                        : 'bg-white text-ink-600 border-canvas-300 hover:border-forest-300'
+                        : 'bg-surface text-ink-600 border-canvas-300 hover:border-forest-300'
                     }`}
                   >
                     {label}
@@ -223,7 +223,7 @@ export default function BookingPage() {
                       className={`py-2 rounded-xl text-sm font-medium border transition ${
                         form.time === t
                           ? 'bg-forest-800 text-white border-forest-800'
-                          : 'bg-white text-ink-600 border-canvas-300 hover:border-forest-300'
+                          : 'bg-surface text-ink-600 border-canvas-300 hover:border-forest-300'
                       }`}
                     >
                       {t}
@@ -251,10 +251,10 @@ export default function BookingPage() {
 
             {/* Price summary */}
             <div className="bg-forest-50 rounded-xl p-4 flex items-center justify-between">
-              <div className="text-sm text-forest-800">
+              <div className="text-sm text-accent">
                 {form.duration} min · {form.date}{form.time ? ` at ${form.time}` : ' · pick a time above'}
               </div>
-              <div className="text-xl font-display font-bold text-forest-800">${price.toFixed(2)}</div>
+              <div className="text-xl font-display font-bold text-accent">${price.toFixed(2)}</div>
             </div>
 
             <button type="submit" disabled={!form.time} className="btn-primary w-full py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed">

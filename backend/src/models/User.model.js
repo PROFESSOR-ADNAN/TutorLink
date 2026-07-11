@@ -57,6 +57,21 @@ const userSchema = new mongoose.Schema(
     passwordResetExpires: Date,
     // Track last login for security
     lastLogin: Date,
+    // Personal settings — synced across devices via the API rather than
+    // stored only in localStorage, so opening the app on a different
+    // device/browser doesn't reset preferences.
+    preferences: {
+      theme: {
+        type: String,
+        enum: ['light', 'dark', 'system'],
+        default: 'system',
+      },
+      emailNotifications: {
+        bookingUpdates: { type: Boolean, default: true }, // confirmations, cancellations, reminders
+        newMessages: { type: Boolean, default: true },
+        marketing: { type: Boolean, default: false },
+      },
+    },
   },
   {
     timestamps: true, // Adds createdAt and updatedAt automatically

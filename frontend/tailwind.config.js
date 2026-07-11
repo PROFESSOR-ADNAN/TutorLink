@@ -1,10 +1,13 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
       colors: {
-        // Deep forest green — the primary brand colour
+        // Deep forest green — the primary brand colour. Kept static (not
+        // theme-dependent): it's used as a background behind white text in
+        // buttons/badges, which reads fine in both light and dark mode.
         forest: {
           50:  '#f0f7f4',
           100: '#dcede4',
@@ -13,12 +16,12 @@ export default {
           400: '#5e9e84',
           500: '#3d8168',
           600: '#2d6652',
-          700: '#265445',  
+          700: '#265445',
           800: '#1B4332',  // ← main primary
           900: '#163728',
           950: '#0c2118',
         },
-        // Warm amber gold — accent
+        // Warm amber gold — accent. Also static for the same reason as forest.
         gold: {
           50:  '#fdfbf0',
           100: '#faf3d0',
@@ -31,24 +34,35 @@ export default {
           800: '#694612',
           900: '#593b13',
         },
-        // Warm off-white canvas backgrounds
+        // Warm off-white canvas backgrounds — CSS-variable-driven so the
+        // whole app's page/section backgrounds invert for dark mode. See
+        // :root / .dark in assets/styles/index.css for the actual values.
         canvas: {
-          50:  '#FEFEFE',
-          100: '#FAFAF7',  // ← page background
-          200: '#F4F4EF',
-          300: '#EAEAE3',
-          400: '#D8D8CF',
+          50:  'rgb(var(--canvas-50) / <alpha-value>)',
+          100: 'rgb(var(--canvas-100) / <alpha-value>)',
+          200: 'rgb(var(--canvas-200) / <alpha-value>)',
+          300: 'rgb(var(--canvas-300) / <alpha-value>)',
+          400: 'rgb(var(--canvas-400) / <alpha-value>)',
         },
-        // Dark ink for text
+        // Text colour — CSS-variable-driven so body text, headings, and
+        // muted/secondary text all invert together for dark mode.
         ink: {
-          900: '#141410',
-          800: '#1E1E19',
-          700: '#2D2D26',
-          600: '#4A4A42',
-          500: '#6B6B61',
-          400: '#8C8C82',
-          300: '#ADADА3',
+          900: 'rgb(var(--ink-900) / <alpha-value>)',
+          800: 'rgb(var(--ink-800) / <alpha-value>)',
+          700: 'rgb(var(--ink-700) / <alpha-value>)',
+          600: 'rgb(var(--ink-600) / <alpha-value>)',
+          500: 'rgb(var(--ink-500) / <alpha-value>)',
+          400: 'rgb(var(--ink-400) / <alpha-value>)',
+          300: 'rgb(var(--ink-300) / <alpha-value>)',
         },
+        // Elevated surfaces (cards, inputs, modals, the navbar) — white in
+        // light mode, a dark charcoal in dark mode, distinct from the page
+        // background so elevation is still visible.
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        // Accent text/link colour. Equals forest-800 in light mode (dark
+        // green reads fine on a light page) but switches to a lighter green
+        // in dark mode, since dark green text is unreadable on a dark page.
+        accent: 'rgb(var(--accent) / <alpha-value>)',
       },
       fontFamily: {
         serif:   ['"DM Serif Display"', 'Georgia', 'serif'],

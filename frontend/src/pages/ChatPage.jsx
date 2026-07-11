@@ -66,7 +66,7 @@ function Message({ msg, isOwn }) {
           className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words ${
             isOwn
               ? "bg-forest-800 text-white rounded-br-sm"
-              : "bg-white text-ink-800 border border-canvas-300 shadow-xs rounded-bl-sm"
+              : "bg-surface text-ink-800 border border-canvas-300 shadow-xs rounded-bl-sm"
           }`}
         >
           {msg.content}
@@ -298,7 +298,7 @@ export default function ChatPage() {
                   <p className="mb-2">No conversations yet</p>
                   <Link
                     to="/tutors"
-                    className="text-forest-800 font-medium hover:underline"
+                    className="text-accent font-medium hover:underline"
                   >
                     Find a tutor to chat with
                   </Link>
@@ -429,7 +429,7 @@ export default function ChatPage() {
                 {/* Input */}
                 <form
                   onSubmit={handleSend}
-                  className="px-5 py-4 border-t border-canvas-300 bg-white flex gap-3"
+                  className="px-5 py-4 border-t border-canvas-300 bg-surface flex gap-3"
                 >
                   <input
                     type="text"

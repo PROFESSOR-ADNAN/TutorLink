@@ -47,7 +47,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-serif text-xl text-ink-900 mb-2">9. Contact</h2>
-          <p>Questions about these terms? Reach us at <a href="mailto:support@tutorlink.com" className="text-forest-800 hover:underline">support@tutorlink.com</a> or via our <a href="/contact" className="text-forest-800 hover:underline">contact page</a>.</p>
+          <p>Questions about these terms? Reach us at <a href="mailto:support@tutorlink.com" className="text-accent hover:underline">support@tutorlink.com</a> or via our <a href="/contact" className="text-accent hover:underline">contact page</a>.</p>
         </section>
       </div>
     </div>

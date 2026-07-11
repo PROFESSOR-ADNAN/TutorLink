@@ -29,7 +29,7 @@ function Chip({ active, children, ...props }) {
       className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
         active
           ? 'bg-forest-800 text-white border-forest-800'
-          : 'bg-white text-ink-600 border-canvas-300 hover:border-canvas-400'
+          : 'bg-surface text-ink-600 border-canvas-300 hover:border-canvas-400'
       }`}
       {...props}
     >
@@ -72,7 +72,7 @@ function ProfileStrength({ percent, missing, onEdit }) {
         <p className="text-xs text-emerald-600 mt-2.5 font-medium">Your profile is complete. Nice work.</p>
       )}
       {missing.length > 0 && onEdit && (
-        <button onClick={onEdit} className="text-xs font-semibold text-forest-800 hover:underline mt-3">
+        <button onClick={onEdit} className="text-xs font-semibold text-accent hover:underline mt-3">
           Complete your profile →
         </button>
       )}
@@ -458,6 +458,13 @@ export default function ProfilePage() {
                 <button onClick={() => goEdit('personal')} className="btn-primary btn-sm whitespace-nowrap">
                   Edit profile
                 </button>
+                <Link to="/settings" className="p-2 rounded-lg text-ink-500 hover:text-ink-900 hover:bg-canvas-200 transition-colors" aria-label="Settings" title="Settings">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
+                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <circle cx="12" cy="12" r="3" strokeWidth={1.8} />
+                  </svg>
+                </Link>
               </>
             ) : (
               <button onClick={() => setMode('view')} className="btn-outline btn-sm whitespace-nowrap">
@@ -474,7 +481,7 @@ export default function ProfilePage() {
               {/* About */}
               <SectionCard
                 title="About"
-                action={<button onClick={() => goEdit('personal')} className="text-ink-400 hover:text-forest-800 transition-colors" title="Edit About">✎</button>}
+                action={<button onClick={() => goEdit('personal')} className="text-ink-400 hover:text-accent transition-colors" title="Edit About">✎</button>}
               >
                 {personal.bio ? (
                   <p className="text-sm text-ink-700 leading-relaxed whitespace-pre-line">{personal.bio}</p>
@@ -494,7 +501,7 @@ export default function ProfilePage() {
                     {/* Teaching — LinkedIn "Experience"-style entry */}
                     <SectionCard
                       title="Teaching"
-                      action={<button onClick={() => goEdit('tutor')} className="text-ink-400 hover:text-forest-800 transition-colors" title="Edit teaching info">✎</button>}
+                      action={<button onClick={() => goEdit('tutor')} className="text-ink-400 hover:text-accent transition-colors" title="Edit teaching info">✎</button>}
                     >
                       <EntryRow
                         icon="🎓"
@@ -510,7 +517,7 @@ export default function ProfilePage() {
                     {/* Education */}
                     <SectionCard
                       title="Education"
-                      action={<button onClick={() => goEdit('tutor')} className="text-ink-400 hover:text-forest-800 transition-colors" title="Edit education">✎</button>}
+                      action={<button onClick={() => goEdit('tutor')} className="text-ink-400 hover:text-accent transition-colors" title="Edit education">✎</button>}
                     >
                       <EntryRow
                         icon="🏛️"
@@ -522,7 +529,7 @@ export default function ProfilePage() {
                     {/* Skills — subjects + languages as pills, LinkedIn "Skills" style */}
                     <SectionCard
                       title="Skills"
-                      action={<button onClick={() => goEdit('tutor')} className="text-ink-400 hover:text-forest-800 transition-colors" title="Edit skills">✎</button>}
+                      action={<button onClick={() => goEdit('tutor')} className="text-ink-400 hover:text-accent transition-colors" title="Edit skills">✎</button>}
                     >
                       <div className="space-y-4">
                         <div>
@@ -545,7 +552,7 @@ export default function ProfilePage() {
                     {/* Availability */}
                     <SectionCard
                       title="Weekly Availability"
-                      action={<button onClick={() => goEdit('tutor')} className="text-ink-400 hover:text-forest-800 transition-colors" title="Edit availability">✎</button>}
+                      action={<button onClick={() => goEdit('tutor')} className="text-ink-400 hover:text-accent transition-colors" title="Edit availability">✎</button>}
                     >
                       {tutorProfile.availability.length ? (
                         <div className="grid sm:grid-cols-2 gap-2">
@@ -607,7 +614,7 @@ export default function ProfilePage() {
                     key={key}
                     onClick={() => setTab(key)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-left transition-all duration-150 ${
-                      tab === key ? 'bg-forest-50 text-forest-800' : 'text-ink-600 hover:bg-canvas-100'
+                      tab === key ? 'bg-forest-50 text-accent' : 'text-ink-600 hover:bg-canvas-100'
                     }`}
                   >
                     <span className="text-base">{icon}</span>

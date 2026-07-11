@@ -380,7 +380,7 @@ export default function HomePage() {
               >
                 {n}
               </div>
-              <h3 className="font-sans font-semibold text-ink-900 text-base mb-3 group-hover:text-forest-800 transition-colors">
+              <h3 className="font-sans font-semibold text-ink-900 text-base mb-3 group-hover:text-accent transition-colors">
                 {title}
               </h3>
               <p
@@ -456,7 +456,7 @@ export default function HomePage() {
                 >
                   {icon}
                 </span>
-                <span className="font-sans font-medium text-sm text-ink-800 group-hover:text-forest-800 transition-colors">
+                <span className="font-sans font-medium text-sm text-ink-800 group-hover:text-accent transition-colors">
                   {name}
                 </span>
               </button>

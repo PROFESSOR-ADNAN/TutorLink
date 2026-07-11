@@ -86,7 +86,7 @@ tutorlink/
 │   │   ├── app.js                 # Express app + all middleware
 │   │   └── server.js              # HTTP server + Socket.IO attach
 │   ├── Dockerfile
-│   └── .env.example
+│   └── .env.example 
 │
 ├── frontend/
 │   ├── src/

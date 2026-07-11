@@ -43,7 +43,7 @@ export default function CheckoutForm({ bookingId, amountCents, onSuccess }) {
     <form onSubmit={handlePay} className="space-y-4">
       <div className="bg-canvas-100 rounded-xl p-4">
         <h4 className="text-sm font-semibold text-ink-600 mb-3">Card Details</h4>
-        <div className="bg-white border border-canvas-300 rounded-xl p-3">
+        <div className="bg-surface border border-canvas-300 rounded-xl p-3">
           <CardElement
             options={{
               style: { base: { fontSize: '14px', color: '#111827', '::placeholder': { color: '#9ca3af' } } },

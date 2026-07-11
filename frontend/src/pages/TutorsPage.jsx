@@ -29,7 +29,7 @@ function TutorCard({ tutor }) {
             <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-400 rounded-full ring-2 ring-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-sans font-semibold text-ink-900 text-sm leading-tight truncate group-hover:text-forest-800 transition-colors">
+            <h3 className="font-sans font-semibold text-ink-900 text-sm leading-tight truncate group-hover:text-accent transition-colors">
               {tutor.user?.name}
             </h3>
             <p className="text-xs text-ink-400 mt-0.5 truncate">{tutor.educationLevel}{tutor.university ? ` · ${tutor.university}` : ''}</p>
@@ -163,7 +163,7 @@ export default function TutorsPage() {
               <div className="flex items-center justify-between mb-5">
                 <h3 className="font-sans font-semibold text-xs uppercase tracking-widest text-ink-500">Filters</h3>
                 {hasFilters && (
-                  <button onClick={clearFilters} className="text-xs text-forest-800 hover:text-forest-700 font-medium">
+                  <button onClick={clearFilters} className="text-xs text-accent hover:text-forest-700 font-medium">
                     Clear all
                   </button>
                 )}

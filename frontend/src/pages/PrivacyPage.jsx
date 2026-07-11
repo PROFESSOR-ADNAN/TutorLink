@@ -27,7 +27,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-serif text-xl text-ink-900 mb-2">5. Data retention and deletion</h2>
-          <p>We retain your account data for as long as your account is active. You can request deletion of your account and associated data at any time by contacting <a href="mailto:support@tutorlink.com" className="text-forest-800 hover:underline">support@tutorlink.com</a>.</p>
+          <p>We retain your account data for as long as your account is active. You can request deletion of your account and associated data at any time by contacting <a href="mailto:support@tutorlink.com" className="text-accent hover:underline">support@tutorlink.com</a>.</p>
         </section>
 
         <section>
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-serif text-xl text-ink-900 mb-2">8. Contact</h2>
-          <p>Questions about this policy? Reach us at <a href="mailto:support@tutorlink.com" className="text-forest-800 hover:underline">support@tutorlink.com</a> or via our <a href="/contact" className="text-forest-800 hover:underline">contact page</a>.</p>
+          <p>Questions about this policy? Reach us at <a href="mailto:support@tutorlink.com" className="text-accent hover:underline">support@tutorlink.com</a> or via our <a href="/contact" className="text-accent hover:underline">contact page</a>.</p>
         </section>
       </div>
     </div>

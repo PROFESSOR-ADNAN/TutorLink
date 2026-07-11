@@ -3,25 +3,69 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Warm off-white canvas backgrounds (light mode) */
+    --canvas-50:  254 254 254;
+    --canvas-100: 250 250 247;
+    --canvas-200: 244 244 239;
+    --canvas-300: 234 234 227;
+    --canvas-400: 216 216 207;
+
+    /* Dark ink for text (light mode) */
+    --ink-900: 20 20 16;
+    --ink-800: 30 30 25;
+    --ink-700: 45 45 38;
+    --ink-600: 74 74 66;
+    --ink-500: 107 107 97;
+    --ink-400: 140 140 130;
+    --ink-300: 173 173 163;
+
+    /* Elevated surfaces: cards, inputs, modals, navbar */
+    --surface: 255 255 255;
+
+    /* Accent text/links — forest-800 */
+    --accent: 27 67 50;
+  }
+
+  .dark {
+    --canvas-50:  38 38 34;
+    --canvas-100: 22 22 20;
+    --canvas-200: 30 30 27;
+    --canvas-300: 44 44 39;
+    --canvas-400: 64 64 56;
+
+    --ink-900: 240 240 235;
+    --ink-800: 222 222 214;
+    --ink-700: 195 195 185;
+    --ink-600: 168 168 156;
+    --ink-500: 140 140 128;
+    --ink-400: 152 152 140;
+    --ink-300: 110 110 100;
+
+    --surface: 32 32 29;
+
+    --accent: 143 191 170; /* forest-300 — readable on a dark background */
+  }
+
   *, *::before, *::after { box-sizing: border-box; }
 
   html { scroll-behavior: smooth; }
 
   body {
-    background-color: #FAFAF7;
-    color: #141410;
+    @apply bg-canvas-100 text-ink-900;
     font-family: 'DM Sans', system-ui, sans-serif;
     font-size: 15px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   h1, h2, h3, h4 {
+    @apply text-ink-900;
     font-family: 'DM Serif Display', Georgia, serif;
     line-height: 1.1;
     letter-spacing: -0.02em;
-    color: #141410;
   }
 
   h5, h6 {
@@ -89,14 +133,12 @@
   }
 
   .btn-outline {
-    @apply btn border text-ink-700;
-    border-color: #D8D8CF;
+    @apply btn border text-ink-700 border-canvas-400;
     background: transparent;
   }
   .btn-outline:hover:not(:disabled) {
-    border-color: #1B4332;
-    color: #1B4332;
-    background: #f0f7f4;
+    @apply border-forest-800 text-accent;
+    background: rgb(27 67 50 / 0.08);
   }
 
   .btn-lg {
@@ -113,8 +155,7 @@
 
   /* ── Form controls ───────────────────────────────────── */
   .input {
-    @apply w-full bg-white text-ink-900 placeholder-ink-400 transition-all duration-150;
-    border: 1.5px solid #EAEAE3;
+    @apply w-full bg-surface text-ink-900 placeholder-ink-400 border border-canvas-400 transition-all duration-150;
     border-radius: 0.5rem;
     padding: 0.625rem 0.875rem;
     font-size: 0.9375rem;
@@ -125,23 +166,19 @@
     border-color: #1B4332;
     box-shadow: 0 0 0 3px rgb(27 67 50 / 0.12);
   }
-  .input::placeholder {
-    color: #8C8C82;
-  }
 
   .label {
+    @apply text-ink-600;
     display: block;
     font-size: 0.875rem;
     font-weight: 500;
-    color: #4A4A42;
     margin-bottom: 0.4rem;
     letter-spacing: 0.01em;
   }
 
   /* ── Cards ───────────────────────────────────────────── */
   .card {
-    background: #FFFFFF;
-    border: 1px solid #EAEAE3;
+    @apply bg-surface border border-canvas-300;
     border-radius: 1rem;
     box-shadow: 0 2px 8px 0 rgb(0 0 0 / 0.05);
   }
@@ -150,7 +187,7 @@
     @apply card transition-all duration-200;
   }
   .card-hover:hover {
-    border-color: #D8D8CF;
+    @apply border-canvas-400;
     box-shadow: 0 8px 24px 0 rgb(0 0 0 / 0.09), 0 2px 8px -2px rgb(0 0 0 / 0.05);
     transform: translateY(-2px);
   }
@@ -163,12 +200,12 @@
     font-size: 0.75rem;
     letter-spacing: 0.01em;
   }
-  .badge-forest  { background: #dcede4; color: #1B4332; }
-  .badge-gold    { background: #faf3d0; color: #7f570d; }
-  .badge-success { background: #d1fae5; color: #065f46; }
-  .badge-warning { background: #fef3c7; color: #92400e; }
-  .badge-error   { background: #fee2e2; color: #991b1b; }
-  .badge-neutral { background: #EAEAE3; color: #4A4A42; }
+  .badge-forest  { background: rgb(27 67 50 / 0.14); color: rgb(var(--accent)); }
+  .badge-gold    { background: rgb(212 160 23 / 0.18); color: #D4A017; }
+  .badge-success { background: rgb(16 185 129 / 0.16); color: #10b981; }
+  .badge-warning { background: rgb(245 158 11 / 0.16); color: #f59e0b; }
+  .badge-error   { background: rgb(239 68 68 / 0.16); color: #ef4444; }
+  .badge-neutral { @apply bg-canvas-300 text-ink-600; }
 
   /* ── Section spacing ─────────────────────────────────── */
   .section {
@@ -177,13 +214,14 @@
 
   /* ── Divider ─────────────────────────────────────────── */
   .divider {
+    @apply border-canvas-300;
     border: none;
-    border-top: 1px solid #EAEAE3;
+    border-top: 1px solid;
   }
 
   /* ── Star rating ─────────────────────────────────────── */
   .star-filled { color: #D4A017; }
-  .star-empty  { color: #EAEAE3; }
+  .star-empty  { @apply text-canvas-400; }
 }
 
 @layer utilities {
