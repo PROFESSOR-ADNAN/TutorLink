@@ -113,13 +113,21 @@ export default function TutorsPage() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
   const [filters, setFilters] = useState({
     subject: searchParams.get('subject') || '',
+    search: searchParams.get('search') || '',
     minRate: '',
     maxRate: '',
     minRating: '',
     sort: '-averageRating',
   });
+
+  // Debounce the free-text search so we're not firing a request on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setFilters((f) => ({ ...f, search: searchInput })), 350);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const fetchTutors = useCallback(async (page = 1) => {
     setLoading(true);
@@ -139,18 +147,56 @@ export default function TutorsPage() {
 
   useEffect(() => { fetchTutors(1); }, [fetchTutors]);
 
-  const clearFilters = () => setFilters({ subject: '', minRate: '', maxRate: '', minRating: '', sort: '-averageRating' });
-  const hasFilters = filters.subject || filters.minRate || filters.maxRate || filters.minRating;
+  const clearFilters = () => {
+    setSearchInput('');
+    setFilters({ subject: '', search: '', minRate: '', maxRate: '', minRating: '', sort: '-averageRating' });
+  };
+  const hasFilters = filters.subject || filters.search || filters.minRate || filters.maxRate || filters.minRating;
 
   return (
     <div className="min-h-screen bg-canvas-100">
-      {/* Page header */}
-      <div className="bg-surface border-b border-canvas-300">
-        <div className="section py-8">
-          <h1 className="font-serif text-ink-900 mb-1 text-[1.75rem]">Find a Tutor</h1>
-          <p className="text-sm text-ink-400">
-            {loading ? 'Loading…' : `${pagination.total || 0} verified tutors available`}
+      {/* Hero */}
+      <div className="relative overflow-hidden border-b border-canvas-300" style={{ background: 'linear-gradient(155deg, rgb(var(--brand-primary)) 0%, rgb(var(--brand-primary-hover)) 100%)' }}>
+        <div className="absolute inset-0 bg-grid-canvas opacity-10 pointer-events-none" />
+        <div className="section py-12 md:py-14 relative">
+          <p className="text-xs font-sans font-semibold uppercase tracking-widest mb-3" style={{ color: 'rgb(var(--brand-gold))' }}>
+            {loading ? 'Loading tutors…' : `${pagination.total || 0} verified tutors`}
           </p>
+          <h1 className="font-serif text-white mb-6" style={{ fontSize: 'clamp(1.75rem, 3.5vw, 2.5rem)', letterSpacing: '-0.02em' }}>
+            Find your perfect tutor
+          </h1>
+
+          {/* Search bar */}
+          <div className="max-w-xl relative">
+            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Search by tutor name, subject, or university…"
+              className="w-full pl-12 pr-4 py-3.5 rounded-xl bg-surface text-ink-900 placeholder-ink-400 text-sm shadow-modal focus:outline-none focus:ring-2"
+              style={{ '--tw-ring-color': 'rgb(var(--brand-gold))' }}
+            />
+          </div>
+
+          {/* Quick subject pills */}
+          <div className="flex flex-wrap gap-2 mt-5">
+            {SUBJECTS.slice(0, 6).map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilters({ ...filters, subject: filters.subject === s ? '' : s })}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  filters.subject === s
+                    ? 'bg-white text-ink-900'
+                    : 'text-white border border-white/25 hover:bg-white/10'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

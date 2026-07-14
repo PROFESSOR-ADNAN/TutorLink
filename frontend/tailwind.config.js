@@ -85,11 +85,8 @@ export default {
         '3xl':'2rem',
       },
       boxShadow: {
-        'xs':    '0 1px 2px 0 rgb(0 0 0 / 0.04)',
-        'sm':    '0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)',
-        'card':  '0 2px 8px 0 rgb(0 0 0 / 0.06), 0 1px 3px -1px rgb(0 0 0 / 0.04)',
-        'hover': '0 8px 24px 0 rgb(0 0 0 / 0.10), 0 2px 8px -2px rgb(0 0 0 / 0.06)',
-        'glow':  '0 0 0 3px rgb(27 67 50 / 0.15)',
+        'xs': '0 1px 2px 0 rgb(0 0 0 / 0.04)',
+        'sm': '0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)',
       },
       backgroundImage: {
         'grid-canvas': "url(\"data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 .5H32M.5 0V32' stroke='%23E8E8E1' stroke-width='0.5'/%3E%3C/svg%3E\")",

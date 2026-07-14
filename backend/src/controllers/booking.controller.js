@@ -1,9 +1,39 @@
 const crypto = require("crypto");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Booking = require("../models/Booking.model");
 const Tutor = require("../models/Tutor.model");
 const { AppError } = require("../middleware/error.middleware");
 const { sendEmail } = require("../utils/email");
 const catchAsync = require("../utils/catchAsync");
+
+// ─── Booking guard rules (tunable without touching logic below) ──────
+// How long an unpaid booking holds a tutor's slot before it's treated as
+// expired and the slot frees back up — prevents someone from booking and
+// never paying, permanently blocking that time for everyone else.
+const PENDING_HOLD_MINUTES = 30;
+// A student can have at most this many unpaid pending bookings open at
+// once — stops someone from mass-reserving slots "just in case".
+const MAX_OPEN_PENDING_BOOKINGS = 3;
+// If a student has cancelled this many (or more) bookings in the trailing
+// window below, new bookings are blocked until they contact support —
+// deters a cancel-and-instantly-rebook pattern that ties up tutors' time.
+const MAX_RECENT_CANCELLATIONS = 3;
+const CANCELLATION_WINDOW_DAYS = 30;
+
+// Reverses a Stripe destination charge: pulls the tutor's share back from
+// their connected account (reverse_transfer) and returns TutorLink's
+// commission too (refund_application_fee), so nobody keeps money on a
+// session that didn't happen. Safe to call on an unpaid booking (no-op).
+async function refundBooking(booking) {
+  if (booking.payment.status !== "paid") return;
+  await stripe.refunds.create({
+    payment_intent: booking.payment.stripePaymentIntentId,
+    reverse_transfer: true,
+    refund_application_fee: true,
+  });
+  booking.payment.status = "refunded";
+  booking.payment.refundedAt = new Date();
+}
 
 // ─── Create a new booking ─────────────────────────────────
 exports.createBooking = catchAsync(async (req, res, next) => {
@@ -13,6 +43,41 @@ exports.createBooking = catchAsync(async (req, res, next) => {
   if (!tutor) return next(new AppError("Tutor not found", 404));
   if (!tutor.isApproved || !tutor.isAvailable) {
     return next(new AppError("This tutor is not currently available", 400));
+  }
+
+  // ─── Guard: too many unpaid holds already open ─────────
+  // Expired holds (past PENDING_HOLD_MINUTES) don't count against this —
+  // they're already treated as abandoned.
+  const openPendingCount = await Booking.countDocuments({
+    student: req.user._id,
+    status: "pending",
+    "payment.status": "unpaid",
+    expiresAt: { $gt: new Date() },
+  });
+  if (openPendingCount >= MAX_OPEN_PENDING_BOOKINGS) {
+    return next(
+      new AppError(
+        `You have ${openPendingCount} sessions awaiting payment already. Please pay or let those expire before booking another.`,
+        400,
+      ),
+    );
+  }
+
+  // ─── Guard: repeated cancel-and-rebook pattern ──────────
+  const windowStart = new Date(Date.now() - CANCELLATION_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+  const recentCancellations = await Booking.countDocuments({
+    student: req.user._id,
+    status: "cancelled",
+    cancelledBy: "student",
+    updatedAt: { $gte: windowStart },
+  });
+  if (recentCancellations >= MAX_RECENT_CANCELLATIONS) {
+    return next(
+      new AppError(
+        "You've cancelled several sessions recently, so new bookings are temporarily on hold. Please contact support to keep booking.",
+        400,
+      ),
+    );
   }
 
   const newStart = new Date(scheduledAt);
@@ -53,9 +118,17 @@ exports.createBooking = catchAsync(async (req, res, next) => {
   // Example — existing: 10:00–11:00, new request: 10:30–11:30
   // existing.start (10:00) < newEnd (11:30) ✅
   // existing.end   (11:00) > newStart (10:30) ✅ → conflict
+  //
+  // An unpaid pending booking past its expiresAt doesn't block anything —
+  // it's an abandoned hold, not a real reservation.
   const conflict = await Booking.findOne({
     tutor: tutorId,
     status: { $in: ["pending", "confirmed"] },
+    $or: [
+      { status: "confirmed" },
+      { "payment.status": "paid" },
+      { expiresAt: { $gt: new Date() } },
+    ],
     scheduledAt: { $lt: newEnd }, // existing start is before new end
     $expr: {
       $gt: [
@@ -81,6 +154,7 @@ exports.createBooking = catchAsync(async (req, res, next) => {
     duration,
     studentNotes,
     payment: { amount, currency: "usd" },
+    expiresAt: new Date(Date.now() + PENDING_HOLD_MINUTES * 60 * 1000),
   });
 
   // Notify tutor that a student has initiated a booking
@@ -212,7 +286,7 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
     if (isTutor && !isAdmin) {
       return next(
         new AppError(
-          "Tutors can't cancel a confirmed booking directly. Contact support if you're unable to attend.",
+          "Tutors can't cancel a confirmed booking directly. Use 'Request cancellation' instead — an admin will review it.",
           403,
         ),
       );
@@ -228,6 +302,18 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
     }
     booking.cancelledBy = isStudent ? "student" : "admin";
     booking.cancelReason = req.body.cancelReason || null;
+
+    // An admin cancelling (whether on their own initiative or approving a
+    // tutor's request elsewhere) refunds the student automatically. A
+    // student cancelling their own booking does not — that's communicated
+    // up front in the cancel confirmation dialog.
+    if (isAdmin) {
+      try {
+        await refundBooking(booking);
+      } catch (err) {
+        return next(new AppError(`Cancelled, but the refund failed: ${err.message}`, 500));
+      }
+    }
   }
 
   booking.status = status;
@@ -235,5 +321,113 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
   if (req.body.sessionSummary) booking.sessionSummary = req.body.sessionSummary;
   await booking.save();
 
+  res.status(200).json({ booking });
+});
+
+// ─── Tutor requests a cancellation ─────────────────────────
+// A tutor can never cancel directly (see above) — this instead files a
+// request an admin has to review, since the student has already paid.
+exports.requestCancellation = catchAsync(async (req, res, next) => {
+  const booking = await Booking.findById(req.params.id).populate({
+    path: "tutor",
+    populate: { path: "user", select: "_id" },
+  });
+  if (!booking) return next(new AppError("Booking not found", 404));
+
+  const isTutor =
+    req.user.role === "tutor" &&
+    booking.tutor.user._id.toString() === req.user._id.toString();
+  if (!isTutor) {
+    return next(new AppError("Only this session's tutor can request its cancellation", 403));
+  }
+
+  if (!["pending", "confirmed"].includes(booking.status)) {
+    return next(new AppError(`Cannot request cancellation for a booking with status: ${booking.status}`, 400));
+  }
+  if (booking.cancellationRequest?.status === "pending") {
+    return next(new AppError("A cancellation request for this session is already pending review", 400));
+  }
+
+  const { reason } = req.body;
+  if (!reason || !reason.trim()) {
+    return next(new AppError("Please explain why you need to cancel this session", 400));
+  }
+
+  booking.cancellationRequest = {
+    status: "pending",
+    reason: reason.trim(),
+    requestedAt: new Date(),
+  };
+  await booking.save({ validateBeforeSave: false });
+
+  res.status(200).json({ booking });
+});
+
+// ─── Admin: list pending cancellation requests ─────────────
+exports.getCancellationRequests = catchAsync(async (req, res, next) => {
+  const bookings = await Booking.find({ "cancellationRequest.status": "pending" })
+    .populate("student", "name avatar email")
+    .populate({ path: "tutor", populate: { path: "user", select: "name avatar email" } })
+    .sort("-cancellationRequest.requestedAt");
+
+  res.status(200).json({ bookings });
+});
+
+// ─── Admin: approve or deny a cancellation request ─────────
+exports.resolveCancellationRequest = catchAsync(async (req, res, next) => {
+  const { decision, adminNote } = req.body; // decision: 'approve' | 'deny'
+  if (!["approve", "deny"].includes(decision)) {
+    return next(new AppError("decision must be 'approve' or 'deny'", 400));
+  }
+
+  const booking = await Booking.findById(req.params.id)
+    .populate("student", "name email")
+    .populate({ path: "tutor", populate: { path: "user", select: "name" } });
+  if (!booking) return next(new AppError("Booking not found", 404));
+  if (booking.cancellationRequest?.status !== "pending") {
+    return next(new AppError("This booking has no pending cancellation request", 400));
+  }
+
+  booking.cancellationRequest.status = decision === "approve" ? "approved" : "denied";
+  booking.cancellationRequest.resolvedAt = new Date();
+  booking.cancellationRequest.resolvedBy = req.user._id;
+  if (adminNote) booking.cancellationRequest.adminNote = adminNote;
+
+  if (decision === "approve") {
+    booking.status = "cancelled";
+    booking.cancelledBy = "tutor";
+    booking.cancelReason = booking.cancellationRequest.reason;
+    try {
+      await refundBooking(booking);
+    } catch (err) {
+      return next(new AppError(`Approved, but the refund failed: ${err.message}`, 500));
+    }
+
+    try {
+      await sendEmail({
+        to: booking.student.email,
+        subject: "Your TutorLink session was cancelled",
+        template: "sessionCancelled",
+        data: {
+          name: booking.student.name,
+          tutorName: booking.tutor.user.name,
+          subject: booking.subject,
+          sessionDate: new Date(booking.scheduledAt).toLocaleString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          refunded: booking.payment.status === "refunded",
+        },
+      });
+    } catch (err) {
+      console.error("Failed to email student about cancellation:", err.message);
+    }
+  }
+
+  await booking.save({ validateBeforeSave: false });
   res.status(200).json({ booking });
 });

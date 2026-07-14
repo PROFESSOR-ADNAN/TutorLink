@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 import useApiData from '../hooks/useApiData';
 import Avatar from '../components/ui/Avatar';
@@ -16,6 +16,7 @@ const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'earnings', label: 'Earnings' },
   { key: 'approvals', label: 'Tutor Approvals' },
+  { key: 'cancellations', label: 'Cancellations' },
   { key: 'users', label: 'Users' },
   { key: 'bookings', label: 'Bookings' },
 ];
@@ -244,6 +245,72 @@ function ApprovalsTab() {
   );
 }
 
+function CancellationsTab() {
+  const { data, loading, error, refetch } = useApiData(() => api.get('/admin/cancellation-requests'), []);
+  const [busyId, setBusyId] = useState(null);
+  const [noteDrafts, setNoteDrafts] = useState({});
+
+  const resolve = async (id, decision) => {
+    setBusyId(id);
+    try {
+      await api.patch(`/admin/cancellation-requests/${id}`, { decision, adminNote: noteDrafts[id] || '' });
+      toast.success(decision === 'approve' ? 'Approved — session cancelled and student refunded' : 'Request denied');
+      refetch();
+    } catch (err) {
+      toast.error(err.message || 'Action failed');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  if (loading) return <SkeletonRows count={3} />;
+  if (error) return <ErrorState message={error} onRetry={refetch} />;
+  if (data.bookings.length === 0) {
+    return <EmptyState icon="✅" title="No pending cancellation requests" description="When a tutor requests to cancel a paid session, it shows up here for review." />;
+  }
+
+  return (
+    <div className="card divide-y divide-canvas-200">
+      {data.bookings.map((b) => (
+        <div key={b._id} className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-3">
+            <Avatar src={b.tutor?.user?.avatar} name={b.tutor?.user?.name} />
+            <div className="flex-1 min-w-0">
+              <div className="font-sans font-semibold text-sm text-ink-900">
+                {b.tutor?.user?.name} <span className="text-ink-400 font-normal">wants to cancel with</span> {b.student?.name}
+              </div>
+              <div className="text-xs text-ink-400 mt-0.5">
+                {b.subject} · {format(new Date(b.scheduledAt), 'MMM d, yyyy · h:mm a')} · ${(b.payment.amount / 100).toFixed(2)}
+                {b.payment.status === 'paid' && <span className="text-accent"> (paid — will be refunded if approved)</span>}
+              </div>
+              <div className="bg-canvas-100 border border-canvas-300 rounded-lg p-3 mt-2 text-sm text-ink-700">
+                "{b.cancellationRequest.reason}"
+              </div>
+              <div className="text-[11px] text-ink-400 mt-1">
+                Requested {format(new Date(b.cancellationRequest.requestedAt), 'MMM d, h:mm a')}
+              </div>
+            </div>
+          </div>
+          <input
+            className="input text-sm mb-3"
+            placeholder="Optional note (visible to your admin team only)"
+            value={noteDrafts[b._id] || ''}
+            onChange={(e) => setNoteDrafts({ ...noteDrafts, [b._id]: e.target.value })}
+          />
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="danger" disabled={busyId === b._id} onClick={() => resolve(b._id, 'deny')}>
+              Deny
+            </Button>
+            <Button size="sm" disabled={busyId === b._id} onClick={() => resolve(b._id, 'approve')}>
+              Approve & refund student
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function UsersTab() {
   const [role, setRole] = useState('');
   const [search, setSearch] = useState('');
@@ -394,6 +461,7 @@ export default function AdminPage() {
       {tab === 'overview' && <OverviewTab />}
       {tab === 'earnings' && <EarningsTab />}
       {tab === 'approvals' && <ApprovalsTab />}
+      {tab === 'cancellations' && <CancellationsTab />}
       {tab === 'users' && <UsersTab />}
       {tab === 'bookings' && <BookingsTab />}
     </div>

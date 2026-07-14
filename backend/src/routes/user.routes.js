@@ -3,6 +3,7 @@ const { protect, restrictTo } = require("../middleware/auth.middleware");
 
 const {
   getAll,
+  getSupportContact,
   updateMe,
   deleteMe,
   uploadAvatar,
@@ -12,6 +13,9 @@ const { uploadAvatar: avatarUpload, uploadCoverImage: coverUpload } = require(".
 
 // Admin: list all users
 router.get("/", protect, restrictTo("admin"), getAll);
+
+// Any logged-in user: find the admin account to message for support
+router.get("/support-contact", protect, getSupportContact);
 
 // Update current user's profile (name, bio, etc. — text fields only)
 router.patch("/me", protect, updateMe);

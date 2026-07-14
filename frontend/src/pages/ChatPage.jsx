@@ -255,6 +255,19 @@ export default function ChatPage() {
     setActiveUser(conv.otherUser);
   };
 
+  // "Contact support" — finds the admin account and opens (or starts) a
+  // chat with them, reusing the normal messaging system rather than a
+  // separate ticket system. Works for both students and tutors.
+  const handleContactSupport = async () => {
+    try {
+      const { admin } = await api.get('/users/support-contact');
+      setActiveUserId(admin._id);
+      setActiveUser({ ...admin, role: 'admin' });
+    } catch (err) {
+      toast.error(err.message || 'Support isn\'t reachable right now');
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div
@@ -266,8 +279,14 @@ export default function ChatPage() {
           <div
             className={`w-full sm:w-72 flex-shrink-0 border-r border-canvas-300 flex-col ${activeUserId ? "hidden sm:flex" : "flex"}`}
           >
-            <div className="px-4 py-4 border-b border-canvas-300">
+            <div className="px-4 py-4 border-b border-canvas-300 flex items-center justify-between">
               <h2 className="font-serif text-lg text-ink-900">Messages</h2>
+              <button
+                onClick={handleContactSupport}
+                className="text-xs font-semibold text-accent hover:underline"
+              >
+                Contact support
+              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto">

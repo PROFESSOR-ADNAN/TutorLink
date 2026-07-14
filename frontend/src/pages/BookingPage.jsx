@@ -280,11 +280,22 @@ export default function BookingPage() {
               </div>
             )}
             <p className="text-xs text-ink-400 text-center">
-              Closing this page won't lose your reservation — you can finish paying anytime from your dashboard.
+              Your slot is held for 30 minutes — pay before then or finish anytime from your dashboard.
             </p>
-            <button onClick={() => setStep(1)} className="btn-ghost w-full text-sm">
-              ← Change time slot
-            </button>
+            <div className="flex gap-3">
+              <button onClick={() => setStep(1)} className="btn-ghost flex-1 text-sm">
+                ← Change time slot
+              </button>
+              <button
+                onClick={() => {
+                  toast.success("Slot held — you'll find it waiting in your dashboard when you're ready to pay.");
+                  navigate('/dashboard');
+                }}
+                className="btn-outline flex-1 text-sm"
+              >
+                Pay later
+              </button>
+            </div>
           </div>
         )}
       </div>

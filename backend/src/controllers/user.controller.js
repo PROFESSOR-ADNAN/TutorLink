@@ -8,6 +8,20 @@ exports.getAll = catchAsync(async (req, res, next) => {
   res.status(200).json({ users });
 });
 
+// ─── Support contact ────────────────────────────────────────
+// Returns a real admin account any student/tutor can message directly
+// through the existing chat system — used by the "Contact support" entry
+// point instead of routing everything through the public contact form.
+exports.getSupportContact = catchAsync(async (req, res, next) => {
+  const admin = await User.findOne({ role: "admin", isActive: true }).sort("_id");
+  if (!admin) {
+    return next(new AppError("No support contact is available right now", 404));
+  }
+  res.status(200).json({
+    admin: { _id: admin._id, name: admin.name, avatar: admin.avatar },
+  });
+});
+
 exports.updateMe = catchAsync(async (req, res, next) => {
   // Disallow password changes here — use /auth/update-password
   const { password, role, isAdmin, ...updates } = req.body;

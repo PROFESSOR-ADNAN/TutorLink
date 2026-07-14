@@ -163,6 +163,43 @@ function CancelConfirmDialog({ booking, onConfirm, onClose, loading }) {
   );
 }
 
+/** Lets a tutor file a cancellation request for admin review — tutors can
+ * never cancel a paid session directly (see backend), so this is the only
+ * path available to them when they genuinely can't make a session. */
+function RequestCancellationDialog({ booking, onSubmit, onClose, loading }) {
+  const [reason, setReason] = useState('');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="bg-surface w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-serif text-lg text-ink-900 mb-2">Request cancellation</h3>
+        <p className="text-sm text-ink-500 mb-1">
+          {booking.subject} · {format(new Date(booking.scheduledAt), 'MMM d, yyyy · h:mm a')}
+        </p>
+        <p className="text-sm text-ink-600 mb-4">
+          Since this session is already paid, you can't cancel it directly — an admin will review your
+          request and, if approved, the student is automatically refunded in full.
+        </p>
+        <textarea
+          className="input resize-none mb-4"
+          rows={4}
+          placeholder="Why do you need to cancel this session?"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
+        <div className="flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={onClose} disabled={loading}>
+            Never mind
+          </Button>
+          <Button variant="danger" className="flex-1" onClick={() => onSubmit(reason)} loading={loading} disabled={!reason.trim()}>
+            Submit request
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BookingRow({ booking, onUpdate, onViewDetails }) {
   const { user } = useAuthStore();
   const isTutor = user?.role === 'tutor';
@@ -171,6 +208,8 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
   const isPast = !isAfter(new Date(booking.scheduledAt), new Date());
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [requestingCancellation, setRequestingCancellation] = useState(false);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
 
   // Only allow joining starting 10 minutes before the scheduled time
   const canJoin =
@@ -201,6 +240,23 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
       setCancelling(false);
     }
   };
+
+  const submitCancellationRequest = async (reason) => {
+    setSubmittingRequest(true);
+    try {
+      await api.post(`/bookings/${booking._id}/request-cancellation`, { reason });
+      toast.success('Cancellation request sent to admin for review');
+      setRequestingCancellation(false);
+      onUpdate();
+    } catch (err) {
+      toast.error(err.message || 'Failed to submit request');
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
+
+  const cancellationStatus = booking.cancellationRequest?.status;
+  const minutesLeft = booking.expiresAt ? Math.max(0, Math.round((new Date(booking.expiresAt) - new Date()) / 60000)) : null;
 
   return (
     <>
@@ -233,9 +289,16 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
 
         <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           {!isTutor && booking.status === 'pending' && booking.payment?.status === 'unpaid' && (
-            <Link to={`/pay/${booking._id}`} className="btn btn-sm text-white bg-gold-400 hover:bg-gold-500">
-              Pay now
-            </Link>
+            <div className="flex flex-col items-end gap-1">
+              <Link to={`/pay/${booking._id}`} className="btn btn-sm text-white bg-gold-400 hover:bg-gold-500">
+                Pay now
+              </Link>
+              {minutesLeft !== null && (
+                <span className="text-[11px] text-ink-400">
+                  {minutesLeft > 0 ? `Held for ${minutesLeft} more min` : 'Hold expired'}
+                </span>
+              )}
+            </div>
           )}
           {isTutor && booking.status === 'pending' && (
             <span className="text-xs text-ink-400 italic px-1">Awaiting student payment</span>
@@ -276,6 +339,20 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
             </Button>
           )}
 
+          {/* Tutors can't cancel directly — they file a request an admin
+              reviews, which auto-refunds the student if approved. */}
+          {isTutor && ['pending', 'confirmed'].includes(booking.status) && (
+            cancellationStatus === 'pending' ? (
+              <Badge variant="warning">Cancellation pending review</Badge>
+            ) : cancellationStatus === 'denied' ? (
+              <span className="text-xs text-ink-400 italic px-1">Cancellation request denied</span>
+            ) : (
+              <Button size="sm" variant="danger" onClick={() => setRequestingCancellation(true)}>
+                Request cancellation
+              </Button>
+            )
+          )}
+
           <button onClick={() => onViewDetails(booking)} className="text-ink-400 hover:text-accent p-1.5" title="View details">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -290,6 +367,15 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
           loading={cancelling}
           onConfirm={confirmCancel}
           onClose={() => setConfirmingCancel(false)}
+        />
+      )}
+
+      {requestingCancellation && (
+        <RequestCancellationDialog
+          booking={booking}
+          loading={submittingRequest}
+          onSubmit={submitCancellationRequest}
+          onClose={() => setRequestingCancellation(false)}
         />
       )}
     </>
@@ -352,12 +438,6 @@ export default function DashboardPage() {
                     {totalUnread > 9 ? '9+' : totalUnread}
                   </span>
                 )}
-              </Link>
-              <Link to="/profile" className="btn-ghost btn-sm">
-                Profile
-              </Link>
-              <Link to="/settings" className="btn-ghost btn-sm">
-                Settings
               </Link>
             </div>
           </div>

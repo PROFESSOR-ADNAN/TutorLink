@@ -10,6 +10,10 @@ const {
   getRecentBookings,
   getEarnings,
 } = require("../controllers/admin.controller");
+const {
+  getCancellationRequests,
+  resolveCancellationRequest,
+} = require("../controllers/booking.controller");
 
 // Every route below requires a logged-in admin — same session-cookie auth
 // as the rest of the app, just restricted to the "admin" role. There's no
@@ -29,5 +33,8 @@ router.get("/users", getUsers);
 router.patch("/users/:id/status", setUserActive);
 
 router.get("/bookings", getRecentBookings);
+
+router.get("/cancellation-requests", getCancellationRequests);
+router.patch("/cancellation-requests/:id", resolveCancellationRequest);
 
 module.exports = router;

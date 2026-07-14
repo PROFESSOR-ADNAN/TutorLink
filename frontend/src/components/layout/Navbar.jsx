@@ -142,10 +142,10 @@ export default function Navbar() {
           : 'bg-canvas-100 border-b border-canvas-200'
       }`}
     >
-      <nav className="section h-16 flex items-center justify-between gap-6">
+      <nav className="section h-16 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
 
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group">
+        <Link to="/" className="flex items-center gap-2.5 flex-shrink-0 group justify-self-start">
           <div
             className="w-8 h-8 flex items-center justify-center rounded-lg transition-transform duration-200 group-hover:scale-105"
             style={{ background: '#1B4332' }}
@@ -159,8 +159,9 @@ export default function Navbar() {
           <span className="font-serif text-lg text-ink-900 leading-none tracking-tight">TutorLink</span>
         </Link>
 
-        {/* Desktop nav links */}
-        <div className="hidden md:flex items-center gap-0.5">
+        {/* Desktop nav links — centered in the navbar regardless of how wide
+            the logo or the auth cluster are */}
+        <div className="hidden md:flex items-center gap-0.5 justify-self-center">
           <NavLink to="/tutors" className={navLink}>Find Tutors</NavLink>
           {isAuthenticated && (
             <>
@@ -171,24 +172,23 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Desktop auth */}
-        <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+        {/* Desktop auth — profile avatar sits last/rightmost, on its own,
+            with everything else (theme, notifications, settings, sign out)
+            to its left */}
+        <div className="hidden md:flex items-center gap-1 flex-shrink-0 justify-self-end">
           {isAuthenticated ? (
-            <div className="flex items-center gap-1">
+            <>
               <ThemeToggle />
               <NotificationBell />
               <SettingsButton />
-              <Link to="/profile" className="flex items-center gap-2.5 group pl-2">
+              <button onClick={handleLogout} className="btn-ghost btn-sm mr-1">Sign out</button>
+              <Link to="/profile" className="group" aria-label="Your profile">
                 <div className="relative">
                   <Avatar src={user?.avatar} name={user?.name} size="sm" className="ring-2 ring-canvas-300 group-hover:ring-forest-300 transition-all" />
                   <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-surface" />
                 </div>
-                <span className="text-sm font-medium text-ink-700 group-hover:text-ink-900 transition-colors">
-                  {user?.name?.split(' ')[0]}
-                </span>
               </Link>
-              <button onClick={handleLogout} className="btn-ghost btn-sm">Sign out</button>
-            </div>
+            </>
           ) : (
             <>
               <ThemeToggle />
@@ -200,7 +200,7 @@ export default function Navbar() {
 
         {/* Mobile menu toggle */}
         <button
-          className="md:hidden p-2 -mr-1 rounded-lg text-ink-500 hover:text-ink-900 hover:bg-canvas-200 transition-colors"
+          className="md:hidden justify-self-end p-2 -mr-1 rounded-lg text-ink-500 hover:text-ink-900 hover:bg-canvas-200 transition-colors"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={menuOpen}

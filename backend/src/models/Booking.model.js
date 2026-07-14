@@ -63,6 +63,26 @@ const bookingSchema = new mongoose.Schema(
       enum: ['student', 'tutor', 'admin'],
     },
     cancelReason: String,
+    // A tutor can't cancel directly (see booking.controller.js) — instead
+    // they file a request here, which an admin reviews and actions. Only
+    // ever set by a tutor requesting; resolved by an admin.
+    cancellationRequest: {
+      status: {
+        type: String,
+        enum: ['none', 'pending', 'approved', 'denied'],
+        default: 'none',
+      },
+      reason: { type: String, maxlength: 1000 },
+      requestedAt: Date,
+      resolvedAt: Date,
+      resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      adminNote: { type: String, maxlength: 1000 },
+    },
+    // Unpaid pending bookings hold the tutor's slot — without a limit, a
+    // student could block a time forever without ever paying. Once past
+    // this time, the slot is treated as free again (see the conflict check
+    // and the per-student pending-bookings guard in createBooking).
+    expiresAt: Date,
   },
   {
     timestamps: true,

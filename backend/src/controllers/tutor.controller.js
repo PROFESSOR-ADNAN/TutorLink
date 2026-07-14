@@ -11,6 +11,7 @@ exports.getTutors = catchAsync(async (req, res, next) => {
     maxRate,
     minRating,
     language,
+    search,
     sort = "-averageRating",
     page = 1,
     limit = 12,
@@ -27,6 +28,21 @@ exports.getTutors = catchAsync(async (req, res, next) => {
   }
   if (minRating) filter.averageRating = { $gte: Number(minRating) };
   if (language) filter.languages = { $in: [language] };
+
+  // Free-text search across name, subjects, university, and teaching style —
+  // name lives on the User model, so we resolve matching user ids first,
+  // then OR them in alongside the tutor-side field matches.
+  if (search) {
+    const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(escaped, "i");
+    const matchingUserIds = await User.find({ role: "tutor", name: re }).distinct("_id");
+    filter.$or = [
+      { subjects: { $in: [re] } },
+      { university: re },
+      { teachingStyle: re },
+      { user: { $in: matchingUserIds } },
+    ];
+  }
 
   const skip = (page - 1) * limit;
 

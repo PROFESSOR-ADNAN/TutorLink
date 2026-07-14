@@ -213,6 +213,44 @@ const templates = {
       </div>
     `,
   }),
+
+  // ─── Session Cancelled (student side, tutor-initiated + admin-approved) ──
+  sessionCancelled: ({ name, tutorName, subject, sessionDate, refunded }) => ({
+    subject: "Your TutorLink session was cancelled",
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+        <div style="background:#1B4332;padding:24px;border-radius:12px 12px 0 0">
+          <h1 style="color:#fff;margin:0;font-size:22px">TutorLink</h1>
+        </div>
+        <div style="background:#fff;padding:32px;border:1px solid #EAEAE3;border-top:none;border-radius:0 0 12px 12px">
+          <h2 style="color:#141410;margin-top:0">Your session was cancelled</h2>
+          <p style="color:#4A4A42">Hi <strong>${name}</strong>,</p>
+          <p style="color:#4A4A42">
+            Your <strong>${subject}</strong> session with <strong>${tutorName}</strong>
+            scheduled for <strong>${sessionDate}</strong> has been cancelled by the tutor.
+            An admin has reviewed and approved this cancellation.
+          </p>
+          ${
+            refunded
+              ? `<div style="background:#F4F4EF;border-radius:8px;padding:16px;margin:20px 0">
+                  <p style="margin:0;color:#141410;font-size:14px">
+                    ✅ Your payment has been fully refunded to your original payment method.
+                    It may take 5–10 business days to appear, depending on your bank.
+                  </p>
+                </div>`
+              : ""
+          }
+          <p style="color:#4A4A42">
+            You can book a new session anytime from
+            <a href="${process.env.CLIENT_URL}/tutors" style="color:#1B4332">TutorLink</a>.
+          </p>
+        </div>
+        <p style="text-align:center;color:#8C8C82;font-size:12px;margin-top:16px">
+          © ${new Date().getFullYear()} TutorLink. All rights reserved.
+        </p>
+      </div>
+    `,
+  }),
 };
 
 // ─── Transporter ────────────────────────────────────────────
