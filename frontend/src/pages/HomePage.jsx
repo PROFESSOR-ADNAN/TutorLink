@@ -240,7 +240,7 @@ export default function HomePage() {
                 </div>
                 <button
                   type="submit"
-                  className="btn-primary rounded-none rounded-r-xl px-6 text-sm m-1 rounded-lg"
+                  className="btn-primary rounded-r-xl px-6 text-sm m-1 rounded-lg"
                 >
                   Search tutors
                 </button>
