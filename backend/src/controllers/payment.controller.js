@@ -178,6 +178,13 @@ exports.stripeWebhook = async (req, res) => {
       const roomId = `tutorlink-${bookingId}-${crypto.randomBytes(4).toString("hex")}`;
       const meetingUrl = `https://meet.jit.si/${roomId}`;
 
+      // Use the fee split Stripe actually applied (from the PaymentIntent
+      // itself) rather than trusting whatever we stored when the intent
+      // was created — this is the authoritative source and keeps the
+      // booking correct even if something upstream ever got out of sync.
+      const platformFeeAmount = pi.application_fee_amount ?? 0;
+      const tutorPayoutAmount = pi.amount - platformFeeAmount;
+
       // Confirm the booking, mark as paid, attach meeting link
       const booking = await Booking.findByIdAndUpdate(
         bookingId,
@@ -185,6 +192,8 @@ exports.stripeWebhook = async (req, res) => {
           "payment.status": "paid",
           "payment.paidAt": new Date(),
           "payment.stripeChargeId": pi.latest_charge,
+          "payment.platformFeeAmount": platformFeeAmount,
+          "payment.tutorPayoutAmount": tutorPayoutAmount,
           status: "confirmed",
           meetingUrl,
           meetingId: roomId,

@@ -130,9 +130,9 @@ function BookingDetailsModal({ booking, onClose }) {
   );
 }
 
-/** Confirmation dialog shown before a student cancels a paid session —
- * cancelling isn't reversible and (per policy) doesn't auto-refund, so this
- * makes sure that's clear before it happens rather than after. */
+/** Confirmation dialog shown before a student cancels an unpaid (pending)
+ * session — nothing has been charged yet, so this is just a plain
+ * confirmation, not a refund warning. */
 function CancelConfirmDialog({ booking, onConfirm, onClose, loading }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -143,12 +143,10 @@ function CancelConfirmDialog({ booking, onConfirm, onClose, loading }) {
           </svg>
         </div>
         <h3 className="font-serif text-lg text-ink-900 mb-2">Cancel this session?</h3>
-        <p className="text-sm text-ink-600 mb-1">
+        <p className="text-sm text-ink-600 mb-6">
           You're about to cancel your {booking.subject} session on{' '}
           {format(new Date(booking.scheduledAt), 'MMM d, yyyy')} with {booking.tutor?.user?.name}.
-        </p>
-        <p className="text-sm text-red-600 font-medium mb-6">
-          The ${(booking.payment.amount / 100).toFixed(2)} you paid will not be refunded automatically.
+          This slot hasn't been paid for yet, so nothing will be charged — cancelling just frees it up.
         </p>
         <div className="flex gap-3">
           <Button variant="secondary" className="flex-1" onClick={onClose} disabled={loading}>
@@ -163,10 +161,10 @@ function CancelConfirmDialog({ booking, onConfirm, onClose, loading }) {
   );
 }
 
-/** Lets a tutor file a cancellation request for admin review — tutors can
- * never cancel a paid session directly (see backend), so this is the only
- * path available to them when they genuinely can't make a session. */
-function RequestCancellationDialog({ booking, onSubmit, onClose, loading }) {
+/** Lets a student or tutor file a cancellation request for admin review —
+ * neither can cancel a paid session directly (see backend), since real
+ * money has to be reversed. This is the only path available once paid. */
+function RequestCancellationDialog({ booking, isTutor, onSubmit, onClose, loading }) {
   const [reason, setReason] = useState('');
 
   return (
@@ -177,8 +175,8 @@ function RequestCancellationDialog({ booking, onSubmit, onClose, loading }) {
           {booking.subject} · {format(new Date(booking.scheduledAt), 'MMM d, yyyy · h:mm a')}
         </p>
         <p className="text-sm text-ink-600 mb-4">
-          Since this session is already paid, you can't cancel it directly — an admin will review your
-          request and, if approved, the student is automatically refunded in full.
+          Since this session is already paid, you can't cancel it directly — an admin will
+          review your request and decide whether {isTutor ? 'the student is refunded' : "you're refunded"}.
         </p>
         <textarea
           className="input resize-none mb-4"
@@ -329,19 +327,18 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
               </span>
             ))}
 
-          {/* Only the student (or an admin, elsewhere) can cancel — a tutor
-              shouldn't be able to back out of a paid, confirmed session with
-              a single click. And even for the student, cancelling requires
-              confirmation since it isn't automatically refunded. */}
-          {!isTutor && ['pending', 'confirmed'].includes(booking.status) && (
+          {/* Unpaid bookings can be cancelled directly by the student —
+              nothing to refund, nothing for an admin to review. */}
+          {!isTutor && ['pending', 'confirmed'].includes(booking.status) && booking.payment?.status === 'unpaid' && (
             <Button size="sm" variant="danger" onClick={() => setConfirmingCancel(true)}>
               Cancel
             </Button>
           )}
 
-          {/* Tutors can't cancel directly — they file a request an admin
-              reviews, which auto-refunds the student if approved. */}
-          {isTutor && ['pending', 'confirmed'].includes(booking.status) && (
+          {/* Once paid, neither side can cancel unilaterally — real money
+              has to be reversed, so both go through the same admin-reviewed
+              request flow. */}
+          {['pending', 'confirmed'].includes(booking.status) && booking.payment?.status === 'paid' && (
             cancellationStatus === 'pending' ? (
               <Badge variant="warning">Cancellation pending review</Badge>
             ) : cancellationStatus === 'denied' ? (
@@ -373,6 +370,7 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
       {requestingCancellation && (
         <RequestCancellationDialog
           booking={booking}
+          isTutor={isTutor}
           loading={submittingRequest}
           onSubmit={submitCancellationRequest}
           onClose={() => setRequestingCancellation(false)}

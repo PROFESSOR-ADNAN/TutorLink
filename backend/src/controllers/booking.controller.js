@@ -14,11 +14,6 @@ const PENDING_HOLD_MINUTES = 30;
 // A student can have at most this many unpaid pending bookings open at
 // once — stops someone from mass-reserving slots "just in case".
 const MAX_OPEN_PENDING_BOOKINGS = 3;
-// If a student has cancelled this many (or more) bookings in the trailing
-// window below, new bookings are blocked until they contact support —
-// deters a cancel-and-instantly-rebook pattern that ties up tutors' time.
-const MAX_RECENT_CANCELLATIONS = 3;
-const CANCELLATION_WINDOW_DAYS = 30;
 
 // Reverses a Stripe destination charge: pulls the tutor's share back from
 // their connected account (reverse_transfer) and returns TutorLink's
@@ -58,23 +53,6 @@ exports.createBooking = catchAsync(async (req, res, next) => {
     return next(
       new AppError(
         `You have ${openPendingCount} sessions awaiting payment already. Please pay or let those expire before booking another.`,
-        400,
-      ),
-    );
-  }
-
-  // ─── Guard: repeated cancel-and-rebook pattern ──────────
-  const windowStart = new Date(Date.now() - CANCELLATION_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const recentCancellations = await Booking.countDocuments({
-    student: req.user._id,
-    status: "cancelled",
-    cancelledBy: "student",
-    updatedAt: { $gte: windowStart },
-  });
-  if (recentCancellations >= MAX_RECENT_CANCELLATIONS) {
-    return next(
-      new AppError(
-        "You've cancelled several sessions recently, so new bookings are temporarily on hold. Please contact support to keep booking.",
         400,
       ),
     );
@@ -286,7 +264,7 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
     if (isTutor && !isAdmin) {
       return next(
         new AppError(
-          "Tutors can't cancel a confirmed booking directly. Use 'Request cancellation' instead — an admin will review it.",
+          "Tutors can't cancel a session directly. Use 'Request cancellation' instead — an admin will review it.",
           403,
         ),
       );
@@ -300,13 +278,28 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
         ),
       );
     }
+
+    // A student can self-cancel directly ONLY if nothing has been paid yet
+    // — there's no money to reverse, so there's nothing for an admin to
+    // review. Once it's paid, real money is on the line, so it goes
+    // through the same admin-reviewed request flow as a tutor cancellation
+    // (see requestCancellation below) instead of being instant/self-service.
+    if (isStudent && !isAdmin && booking.payment.status === "paid") {
+      return next(
+        new AppError(
+          "This session is already paid, so it can't be cancelled directly. Use 'Request cancellation' instead — an admin will review it and decide on a refund.",
+          403,
+        ),
+      );
+    }
+
     booking.cancelledBy = isStudent ? "student" : "admin";
     booking.cancelReason = req.body.cancelReason || null;
 
-    // An admin cancelling (whether on their own initiative or approving a
-    // tutor's request elsewhere) refunds the student automatically. A
-    // student cancelling their own booking does not — that's communicated
-    // up front in the cancel confirmation dialog.
+    // An admin cancelling refunds the student automatically, if the
+    // booking was actually paid (refundBooking() is a safe no-op
+    // otherwise). A student self-cancelling an unpaid booking never
+    // reaches here with anything to refund in the first place.
     if (isAdmin) {
       try {
         await refundBooking(booking);
@@ -324,9 +317,11 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
   res.status(200).json({ booking });
 });
 
-// ─── Tutor requests a cancellation ─────────────────────────
-// A tutor can never cancel directly (see above) — this instead files a
-// request an admin has to review, since the student has already paid.
+// ─── Either party requests a cancellation on a paid booking ─
+// Once a booking is paid, neither the student nor the tutor can cancel it
+// unilaterally — real money is on the line, so an admin has to review the
+// reason and decide whether it's refunded. Unpaid bookings don't need this
+// at all — either side can just cancel directly (see updateBookingStatus).
 exports.requestCancellation = catchAsync(async (req, res, next) => {
   const booking = await Booking.findById(req.params.id).populate({
     path: "tutor",
@@ -337,12 +332,22 @@ exports.requestCancellation = catchAsync(async (req, res, next) => {
   const isTutor =
     req.user.role === "tutor" &&
     booking.tutor.user._id.toString() === req.user._id.toString();
-  if (!isTutor) {
-    return next(new AppError("Only this session's tutor can request its cancellation", 403));
+  const isStudent = booking.student.toString() === req.user._id.toString();
+
+  if (!isTutor && !isStudent) {
+    return next(new AppError("Only this session's student or tutor can request its cancellation", 403));
   }
 
   if (!["pending", "confirmed"].includes(booking.status)) {
     return next(new AppError(`Cannot request cancellation for a booking with status: ${booking.status}`, 400));
+  }
+  if (booking.payment.status !== "paid") {
+    return next(
+      new AppError(
+        "This booking hasn't been paid yet — you can cancel it directly instead of requesting review.",
+        400,
+      ),
+    );
   }
   if (booking.cancellationRequest?.status === "pending") {
     return next(new AppError("A cancellation request for this session is already pending review", 400));
@@ -355,6 +360,7 @@ exports.requestCancellation = catchAsync(async (req, res, next) => {
 
   booking.cancellationRequest = {
     status: "pending",
+    requestedBy: isTutor ? "tutor" : "student",
     reason: reason.trim(),
     requestedAt: new Date(),
   };
@@ -395,7 +401,7 @@ exports.resolveCancellationRequest = catchAsync(async (req, res, next) => {
 
   if (decision === "approve") {
     booking.status = "cancelled";
-    booking.cancelledBy = "tutor";
+    booking.cancelledBy = booking.cancellationRequest.requestedBy || "admin";
     booking.cancelReason = booking.cancellationRequest.reason;
     try {
       await refundBooking(booking);

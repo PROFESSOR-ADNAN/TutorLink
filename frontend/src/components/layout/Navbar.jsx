@@ -32,7 +32,7 @@ function NotificationBell() {
     <div className="relative" ref={wrapperRef}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative p-2 rounded-lg text-ink-500 hover:text-ink-900 hover:bg-canvas-200 transition-colors"
+        className="relative p-2 rounded-lg text-chrome-muted hover:text-chrome-text hover:bg-chrome-border transition-colors"
         aria-label="Notifications"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,7 +91,7 @@ function SettingsButton() {
   return (
     <Link
       to="/settings"
-      className="p-2 rounded-lg text-ink-500 hover:text-ink-900 hover:bg-canvas-200 transition-colors"
+      className="p-2 rounded-lg text-chrome-muted hover:text-chrome-text hover:bg-chrome-border transition-colors"
       aria-label="Settings"
       title="Settings"
     >
@@ -130,16 +130,14 @@ export default function Navbar() {
   const navLink = ({ isActive }) =>
     `relative px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-150 ${
       isActive
-        ? 'text-accent'
-        : 'text-ink-500 hover:text-ink-900'
+        ? 'text-forest-300'
+        : 'text-chrome-muted hover:text-chrome-text'
     }`;
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-all duration-200 ${
-        scrolled
-          ? 'bg-surface/95 backdrop-blur-md border-b border-canvas-300 shadow-xs'
-          : 'bg-canvas-100 border-b border-canvas-200'
+      className={`sticky top-0 z-50 transition-all duration-200 bg-chrome border-b border-chrome-border ${
+        scrolled ? 'shadow-md' : ''
       }`}
     >
       <nav className="section h-16 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
@@ -156,7 +154,7 @@ export default function Navbar() {
               <path d="M9 5h4a1 1 0 011 1v7a1 1 0 01-1 1H9" stroke="white" strokeWidth="1.2" strokeOpacity="0.7" strokeLinecap="round"/>
             </svg>
           </div>
-          <span className="font-serif text-lg text-ink-900 leading-none tracking-tight">TutorLink</span>
+          <span className="font-serif text-lg text-chrome-text leading-none tracking-tight">TutorLink</span>
         </Link>
 
         {/* Desktop nav links — centered in the navbar regardless of how wide
@@ -181,18 +179,18 @@ export default function Navbar() {
               <ThemeToggle />
               <NotificationBell />
               <SettingsButton />
-              <button onClick={handleLogout} className="btn-ghost btn-sm mr-1">Sign out</button>
+              <button onClick={handleLogout} className="btn btn-sm mr-1 text-chrome-muted hover:text-chrome-text hover:bg-chrome-border">Sign out</button>
               <Link to="/profile" className="group" aria-label="Your profile">
                 <div className="relative">
-                  <Avatar src={user?.avatar} name={user?.name} size="sm" className="ring-2 ring-canvas-300 group-hover:ring-forest-300 transition-all" />
-                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-surface" />
+                  <Avatar src={user?.avatar} name={user?.name} size="sm" className="ring-2 ring-chrome-border group-hover:ring-forest-300 transition-all" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full ring-2 ring-chrome" />
                 </div>
               </Link>
             </>
           ) : (
             <>
               <ThemeToggle />
-              <Link to="/login" className="btn-ghost btn-sm">Log in</Link>
+              <Link to="/login" className="btn btn-sm text-chrome-muted hover:text-chrome-text hover:bg-chrome-border">Log in</Link>
               <Link to="/register" className="btn-primary btn-sm">Get started</Link>
             </>
           )}
@@ -200,7 +198,7 @@ export default function Navbar() {
 
         {/* Mobile menu toggle */}
         <button
-          className="md:hidden justify-self-end p-2 -mr-1 rounded-lg text-ink-500 hover:text-ink-900 hover:bg-canvas-200 transition-colors"
+          className="md:hidden justify-self-end p-2 -mr-1 rounded-lg text-chrome-muted hover:text-chrome-text hover:bg-chrome-border transition-colors"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={menuOpen}
@@ -219,19 +217,19 @@ export default function Navbar() {
 
       {/* Mobile drawer */}
       {menuOpen && (
-        <div className="md:hidden border-t border-canvas-300 bg-surface">
+        <div className="md:hidden border-t border-chrome-border bg-chrome">
           <div className="section py-3 space-y-0.5">
             <div className="flex items-center justify-between px-3 py-2.5">
-              <span className="text-sm font-medium text-ink-500">Appearance</span>
+              <span className="text-sm font-medium text-chrome-muted">Appearance</span>
               <ThemeToggle />
             </div>
-            <Link to="/tutors" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">
+            <Link to="/tutors" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-chrome-muted hover:bg-chrome-border hover:text-chrome-text transition-colors">
               Find Tutors
             </Link>
             {isAuthenticated ? (
               <>
-                <Link to="/dashboard" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">Dashboard</Link>
-                <Link to="/chat" className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">
+                <Link to="/dashboard" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-chrome-muted hover:bg-chrome-border hover:text-chrome-text transition-colors">Dashboard</Link>
+                <Link to="/chat" className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-chrome-muted hover:bg-chrome-border hover:text-chrome-text transition-colors">
                   Messages
                   {totalUnread > 0 && (
                     <span className="min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
@@ -239,20 +237,20 @@ export default function Navbar() {
                     </span>
                   )}
                 </Link>
-                <Link to="/profile" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">Profile</Link>
-                <Link to="/settings" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">Settings</Link>
+                <Link to="/profile" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-chrome-muted hover:bg-chrome-border hover:text-chrome-text transition-colors">Profile</Link>
+                <Link to="/settings" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-chrome-muted hover:bg-chrome-border hover:text-chrome-text transition-colors">Settings</Link>
                 {user?.role === 'admin' && (
-                  <Link to="/admin" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-ink-700 hover:bg-canvas-100 hover:text-ink-900 transition-colors">Admin</Link>
+                  <Link to="/admin" className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-chrome-muted hover:bg-chrome-border hover:text-chrome-text transition-colors">Admin</Link>
                 )}
-                <div className="pt-2 mt-2 border-t border-canvas-200">
-                  <button onClick={handleLogout} className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+                <div className="pt-2 mt-2 border-t border-chrome-border">
+                  <button onClick={handleLogout} className="w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 transition-colors">
                     Sign out
                   </button>
                 </div>
               </>
             ) : (
-              <div className="pt-2 mt-1 border-t border-canvas-200 flex flex-col gap-2">
-                <Link to="/login" className="btn-outline w-full justify-center">Log in</Link>
+              <div className="pt-2 mt-1 border-t border-chrome-border flex flex-col gap-2">
+                <Link to="/login" className="btn w-full justify-center border border-chrome-border text-chrome-text hover:bg-chrome-border">Log in</Link>
                 <Link to="/register" className="btn-primary w-full justify-center">Get started</Link>
               </div>
             )}

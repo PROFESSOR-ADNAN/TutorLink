@@ -63,15 +63,18 @@ const bookingSchema = new mongoose.Schema(
       enum: ['student', 'tutor', 'admin'],
     },
     cancelReason: String,
-    // A tutor can't cancel directly (see booking.controller.js) — instead
-    // they file a request here, which an admin reviews and actions. Only
-    // ever set by a tutor requesting; resolved by an admin.
+    // A cancellation on an already-paid booking always goes through admin
+    // review (whether filed by the student or the tutor) rather than being
+    // self-service, since real money has to be reversed. Unpaid bookings
+    // don't need this — either party can just cancel directly (see
+    // updateBookingStatus in booking.controller.js).
     cancellationRequest: {
       status: {
         type: String,
         enum: ['none', 'pending', 'approved', 'denied'],
         default: 'none',
       },
+      requestedBy: { type: String, enum: ['student', 'tutor'] },
       reason: { type: String, maxlength: 1000 },
       requestedAt: Date,
       resolvedAt: Date,

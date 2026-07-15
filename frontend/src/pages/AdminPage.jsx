@@ -75,12 +75,14 @@ function EarningsTab() {
   if (loading) return <SkeletonRows count={4} />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
 
-  const { totals, daily, monthly, byTutor, commissionRate } = data;
+  const { totals, statusBreakdown: sb, daily, monthly, byTutor, commissionRate } = data;
   const chartData = (range === 'daily' ? daily : monthly).map((d) => ({
     label: range === 'daily' ? format(new Date(d._id), 'MMM d') : format(new Date(`${d._id}-01`), 'MMM yyyy'),
     'Platform commission': +(d.platformFees / 100).toFixed(2),
     'Gross revenue': +(d.grossRevenue / 100).toFixed(2),
   }));
+
+  const money = (cents) => `$${(cents / 100).toFixed(2)}`;
 
   return (
     <div className="space-y-6">
@@ -88,12 +90,36 @@ function EarningsTab() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           label="Platform commission"
-          value={`$${(totals.platformFees / 100).toFixed(2)}`}
+          value={money(totals.platformFees)}
           hint={`${(commissionRate * 100).toFixed(0)}% of gross revenue`}
         />
-        <StatCard label="Gross revenue" value={`$${(totals.grossRevenue / 100).toFixed(2)}`} hint="total charged to students" />
-        <StatCard label="Paid to tutors" value={`$${(totals.tutorPayouts / 100).toFixed(2)}`} hint="via Stripe Connect" />
+        <StatCard label="Gross revenue" value={money(totals.grossRevenue)} hint="total charged to students" />
+        <StatCard label="Paid to tutors" value={money(totals.tutorPayouts)} hint="via Stripe Connect" />
         <StatCard label="Paid bookings" value={totals.paidBookings} />
+      </div>
+
+      {/* Booking status breakdown — answers "which bookings actually took
+          place vs. got cancelled vs. are still upcoming", and where the
+          money for each bucket currently sits. */}
+      <div className="card p-5">
+        <h3 className="font-sans font-semibold text-sm text-ink-900 mb-1">Where every booking stands</h3>
+        <p className="text-xs text-ink-400 mb-4">Money only leaves a "cancelled & refunded" booking — everything else keeps its payout.</p>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[
+            { label: 'Completed', sub: 'session took place', data: sb.completed, tone: 'text-forest-700' },
+            { label: 'Confirmed', sub: 'paid, upcoming', data: sb.confirmed, tone: 'text-accent' },
+            { label: 'Awaiting payment', sub: 'never checked out', data: sb.pendingUnpaid, tone: 'text-ink-500' },
+            { label: 'Cancelled, refunded', sub: 'money returned', data: sb.cancelledRefunded, tone: 'text-red-500' },
+            { label: 'Cancelled, no refund', sub: 'was never paid', data: sb.cancelledNoRefund, tone: 'text-ink-400' },
+          ].map(({ label, sub, data: d, tone }) => (
+            <div key={label} className="rounded-xl border border-canvas-300 p-3">
+              <div className={`font-serif text-xl ${tone}`}>{d.count}</div>
+              <div className="text-xs font-medium text-ink-700 mt-0.5">{label}</div>
+              <div className="text-[11px] text-ink-400">{sub}</div>
+              {d.amount > 0 && <div className="text-xs text-ink-500 mt-1">{money(d.amount)}</div>}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Trend chart */}
@@ -116,7 +142,10 @@ function EarningsTab() {
         </div>
 
         {chartData.length === 0 ? (
-          <EmptyState title="No paid bookings yet" description="Revenue will show up here once sessions are paid for." />
+          <EmptyState
+            title="No paid bookings yet"
+            description="This chart is driven entirely by real payments — it'll fill in as soon as a session is actually paid for through Stripe. Test/seeded bookings marked 'paid' without going through checkout won't show a trend here, only in the totals above."
+          />
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
@@ -148,19 +177,21 @@ function EarningsTab() {
       <div className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-canvas-200">
           <h3 className="font-sans font-semibold text-sm text-ink-900">Earnings by tutor</h3>
-          <p className="text-xs text-ink-400 mt-0.5">What each tutor has earned, and what TutorLink kept in commission from them.</p>
+          <p className="text-xs text-ink-400 mt-0.5">What each tutor has earned, what TutorLink kept in commission, and whether they're actually set up to receive it.</p>
         </div>
         {byTutor.length === 0 ? (
-          <EmptyState title="No tutor earnings yet" />
+          <EmptyState title="No tutor earnings yet" description="Nothing has been paid for yet — this fills in once a student completes checkout on a booking." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs font-semibold uppercase tracking-wide text-ink-400 border-b border-canvas-200">
                   <th className="px-5 py-3">Tutor</th>
-                  <th className="px-5 py-3">Sessions</th>
+                  <th className="px-5 py-3">Paid sessions</th>
+                  <th className="px-5 py-3">Completed</th>
                   <th className="px-5 py-3">Tutor earned</th>
                   <th className="px-5 py-3">Platform kept</th>
+                  <th className="px-5 py-3">Payouts</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-canvas-200">
@@ -172,9 +203,15 @@ function EarningsTab() {
                         <span className="font-medium text-ink-900">{t.name}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-ink-600">{t.sessionsCompleted}</td>
-                    <td className="px-5 py-3 font-medium text-ink-900">${(t.totalPayout / 100).toFixed(2)}</td>
-                    <td className="px-5 py-3 text-ink-500">${(t.totalPlatformFee / 100).toFixed(2)}</td>
+                    <td className="px-5 py-3 text-ink-600">{t.paidSessions}</td>
+                    <td className="px-5 py-3 text-ink-600">{t.completedSessions}</td>
+                    <td className="px-5 py-3 font-medium text-ink-900">{money(t.totalPayout)}</td>
+                    <td className="px-5 py-3 text-ink-500">{money(t.totalPlatformFee)}</td>
+                    <td className="px-5 py-3">
+                      <Badge variant={t.payoutsEnabled ? 'success' : 'warning'}>
+                        {t.payoutsEnabled ? 'Set up' : 'Not set up'}
+                      </Badge>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -250,11 +287,15 @@ function CancellationsTab() {
   const [busyId, setBusyId] = useState(null);
   const [noteDrafts, setNoteDrafts] = useState({});
 
-  const resolve = async (id, decision) => {
-    setBusyId(id);
+  const resolve = async (booking, decision) => {
+    setBusyId(booking._id);
     try {
-      await api.patch(`/admin/cancellation-requests/${id}`, { decision, adminNote: noteDrafts[id] || '' });
-      toast.success(decision === 'approve' ? 'Approved — session cancelled and student refunded' : 'Request denied');
+      await api.patch(`/admin/cancellation-requests/${booking._id}`, { decision, adminNote: noteDrafts[booking._id] || '' });
+      toast.success(
+        decision === 'approve'
+          ? `Approved — session cancelled, $${(booking.payment.amount / 100).toFixed(2)} refunded to ${booking.student?.name}`
+          : 'Request denied — session stays as scheduled'
+      );
       refetch();
     } catch (err) {
       toast.error(err.message || 'Action failed');
@@ -266,22 +307,28 @@ function CancellationsTab() {
   if (loading) return <SkeletonRows count={3} />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (data.bookings.length === 0) {
-    return <EmptyState icon="✅" title="No pending cancellation requests" description="When a tutor requests to cancel a paid session, it shows up here for review." />;
+    return <EmptyState icon="✅" title="No pending cancellation requests" description="When a student or tutor requests to cancel a paid session, it shows up here for review." />;
   }
 
   return (
     <div className="card divide-y divide-canvas-200">
-      {data.bookings.map((b) => (
+      {data.bookings.map((b) => {
+        const requestedByTutor = b.cancellationRequest.requestedBy === 'tutor';
+        const requester = requestedByTutor ? b.tutor?.user : b.student;
+        const otherParty = requestedByTutor ? b.student : b.tutor?.user;
+        return (
         <div key={b._id} className="p-5">
           <div className="flex flex-col sm:flex-row sm:items-start gap-4 mb-3">
-            <Avatar src={b.tutor?.user?.avatar} name={b.tutor?.user?.name} />
+            <Avatar src={requester?.avatar} name={requester?.name} />
             <div className="flex-1 min-w-0">
               <div className="font-sans font-semibold text-sm text-ink-900">
-                {b.tutor?.user?.name} <span className="text-ink-400 font-normal">wants to cancel with</span> {b.student?.name}
+                {requester?.name}
+                <span className="text-ink-400 font-normal"> ({requestedByTutor ? 'tutor' : 'student'}) wants to cancel with </span>
+                {otherParty?.name}
               </div>
               <div className="text-xs text-ink-400 mt-0.5">
-                {b.subject} · {format(new Date(b.scheduledAt), 'MMM d, yyyy · h:mm a')} · ${(b.payment.amount / 100).toFixed(2)}
-                {b.payment.status === 'paid' && <span className="text-accent"> (paid — will be refunded if approved)</span>}
+                {b.subject} · {format(new Date(b.scheduledAt), 'MMM d, yyyy · h:mm a')} · ${(b.payment.amount / 100).toFixed(2)} paid
+                <span className="text-accent"> — will refund the full ${(b.payment.amount / 100).toFixed(2)} to {b.student?.name} if approved</span>
               </div>
               <div className="bg-canvas-100 border border-canvas-300 rounded-lg p-3 mt-2 text-sm text-ink-700">
                 "{b.cancellationRequest.reason}"
@@ -298,15 +345,16 @@ function CancellationsTab() {
             onChange={(e) => setNoteDrafts({ ...noteDrafts, [b._id]: e.target.value })}
           />
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="danger" disabled={busyId === b._id} onClick={() => resolve(b._id, 'deny')}>
-              Deny
+            <Button size="sm" variant="danger" disabled={busyId === b._id} onClick={() => resolve(b, 'deny')}>
+              Deny — keep session
             </Button>
-            <Button size="sm" disabled={busyId === b._id} onClick={() => resolve(b._id, 'approve')}>
+            <Button size="sm" disabled={busyId === b._id} onClick={() => resolve(b, 'approve')}>
               Approve & refund student
             </Button>
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -18,7 +18,7 @@ function StatusIndicator() {
   }, []);
 
   const config = {
-    checking: { color: 'bg-canvas-400', text: 'Checking status…' },
+    checking: { color: 'bg-chrome-border', text: 'Checking status…' },
     ok: { color: 'bg-green-400', text: 'All systems operational' },
     down: { color: 'bg-red-400', text: 'Some services may be unavailable' },
   }[status];
@@ -26,7 +26,7 @@ function StatusIndicator() {
   return (
     <div className="flex items-center gap-1.5">
       <span className={`w-1.5 h-1.5 rounded-full ${config.color} ${status === 'checking' ? 'animate-pulse' : ''}`} />
-      <span className="text-xs text-ink-400">{config.text}</span>
+      <span className="text-xs text-chrome-muted">{config.text}</span>
     </div>
   );
 }
@@ -43,7 +43,7 @@ export default function Footer() {
     // Follows the same canvas/ink theme variables as the rest of the site,
     // so it inverts cleanly with light/dark mode instead of being a
     // permanently-dark band that clashes with a light page.
-    <footer className="bg-canvas-50 border-t border-canvas-300">
+    <footer className="bg-chrome border-t border-chrome-border">
       <div className="section py-14">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
           {/* Brand */}
@@ -55,37 +55,37 @@ export default function Footer() {
                   <path d="M9 5h4a1 1 0 011 1v7a1 1 0 01-1 1H9" stroke="white" strokeWidth="1.2" strokeOpacity="0.7" strokeLinecap="round"/>
                 </svg>
               </div>
-              <span className="font-serif text-base text-ink-900">TutorLink</span>
+              <span className="font-serif text-base text-chrome-text">TutorLink</span>
             </Link>
-            <p className="text-xs leading-relaxed text-ink-400" style={{ maxWidth: '22ch' }}>
+            <p className="text-xs leading-relaxed text-chrome-muted" style={{ maxWidth: '22ch' }}>
               Expert tutoring, on demand. Learn live with verified tutors.
             </p>
           </div>
 
           <div>
-            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4 text-ink-400">Platform</h4>
+            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4 text-chrome-muted">Platform</h4>
             <ul className="space-y-2.5">
               {platformLinks.map(({ to, label }) => (
                 <li key={label}>
-                  <Link to={to} className="text-sm text-ink-500 transition-colors hover:text-ink-900">{label}</Link>
+                  <Link to={to} className="text-sm text-chrome-muted transition-colors hover:text-chrome-text">{label}</Link>
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4 text-ink-400">Subjects</h4>
+            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4 text-chrome-muted">Subjects</h4>
             <ul className="space-y-2.5">
               {['Mathematics', 'Programming', 'Physics', 'English', 'Chemistry'].map(s => (
                 <li key={s}>
-                  <Link to={`/tutors?subject=${s}`} className="text-sm text-ink-500 transition-colors hover:text-ink-900">{s}</Link>
+                  <Link to={`/tutors?subject=${s}`} className="text-sm text-chrome-muted transition-colors hover:text-chrome-text">{s}</Link>
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4 text-ink-400">Support</h4>
+            <h4 className="font-sans text-xs font-semibold uppercase tracking-widest mb-4 text-chrome-muted">Support</h4>
             <ul className="space-y-2.5">
               {[
                 { to: '/contact', label: 'Contact' },
@@ -93,15 +93,15 @@ export default function Footer() {
                 { to: '/terms',   label: 'Terms of Service' },
               ].map(({ to, label }) => (
                 <li key={label}>
-                  <Link to={to} className="text-sm text-ink-500 transition-colors hover:text-ink-900">{label}</Link>
+                  <Link to={to} className="text-sm text-chrome-muted transition-colors hover:text-chrome-text">{label}</Link>
                 </li>
               ))}
             </ul>
           </div>
         </div>
 
-        <div className="mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-canvas-300">
-          <p className="text-xs text-ink-400">
+        <div className="mt-10 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-chrome-border">
+          <p className="text-xs text-chrome-muted">
             © {new Date().getFullYear()} TutorLink. All rights reserved.
           </p>
           <StatusIndicator />

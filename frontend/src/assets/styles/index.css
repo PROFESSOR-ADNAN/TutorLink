@@ -4,26 +4,31 @@
 
 @layer base {
   :root {
-    /* Warm off-white canvas backgrounds (light mode) */
-    --canvas-50:  255 255 255;
-    --canvas-100: 250 250 248;
-    --canvas-200: 245 245 241;
-    --canvas-300: 231 231 224;
-    --canvas-400: 210 210 199;
+    /* Muted, warm sage-tinted neutrals (light mode) — deliberately NOT
+       stark white. A pure-white page next to a pure-white navbar/cards
+       reads as "glowing" and generic; toning everything down a few percent
+       toward the brand green gives it a calmer, more considered feel
+       without sacrificing the light/airy quality of the theme. */
+    --canvas-50:  248 249 245;
+    --canvas-100: 242 244 238; /* page background */
+    --canvas-200: 232 235 225;
+    --canvas-300: 213 218 204;
+    --canvas-400: 184 192 172;
 
     /* Dark ink for text (light mode) */
-    --ink-900: 23 23 20;
-    --ink-800: 38 38 33;
-    --ink-700: 61 61 53;
-    --ink-600: 92 92 82;
-    --ink-500: 100 100 90;
-    --ink-400: 110 110 100;
-    --ink-300: 180 180 168;
+    --ink-900: 26 30 24;
+    --ink-800: 41 46 37;
+    --ink-700: 64 70 57;
+    --ink-600: 94 100 85;
+    --ink-500: 106 112 96;
+    --ink-400: 118 124 106;
+    --ink-300: 176 182 164;
 
-    /* Elevated surfaces: cards, inputs, modals, navbar — pure white pops
-       cleanly against the warm-gray page background */
-    --surface: 255 255 255;
-    --surface-2: 245 245 241; /* one step further, e.g. hover on a card row */
+    /* Elevated surfaces: cards, inputs, modals — a soft off-white, one
+       notch lighter than the page so they still read as "raised" without
+       being a jarring pure-white square on a toned page. */
+    --surface: 250 251 247;
+    --surface-2: 240 242 233;
 
     /* Accent text/links — forest-800 */
     --accent: 27 67 50;
@@ -35,45 +40,60 @@
     --brand-gold: 212 160 23;
     --brand-gold-hover: 191 144 20;
 
+    /* Navbar/Footer "chrome" — fixed, doesn't invert with theme (see the
+       Tailwind config comment on the `chrome` colour for why). A deep,
+       muted forest-charcoal reads as intentional brand identity rather
+       than "the site forgot to theme this part." */
+    --chrome: 25 38 32;
+    --chrome-border: 42 58 49;
+    --chrome-text: 237 240 234;
+    --chrome-text-muted: 168 178 168;
+
     --shadow-card: 0 2px 8px 0 rgb(0 0 0 / 0.05), 0 1px 2px 0 rgb(0 0 0 / 0.04);
     --shadow-hover: 0 8px 24px 0 rgb(0 0 0 / 0.09), 0 2px 8px -2px rgb(0 0 0 / 0.05);
     --shadow-modal: 0 24px 48px -12px rgb(0 0 0 / 0.18), 0 4px 16px -4px rgb(0 0 0 / 0.1);
   }
 
   .dark {
-    /* A true, cool-neutral near-black rather than a muddy warm brown-gray —
-       and each step is a clearly perceptible jump (not a few units apart),
-       so page background, cards, and hover states read as distinct layers
-       instead of blurring together. */
-    --canvas-50:  13 14 13;
-    --canvas-100: 18 19 18;  /* page background */
-    --canvas-200: 26 27 25;  /* subtle section fills within the page */
-    --canvas-300: 42 43 40;  /* borders/dividers — visible, not harsh */
-    --canvas-400: 60 61 56;  /* stronger borders, hover states on chips */
+    /* A soft charcoal with a whisper of green in it — not a "black hole".
+       Page background sits noticeably above pure black so the whole site
+       still feels calm and readable in a bright room, not like an OLED
+       power-saving mode. */
+    --canvas-50:  30 33 30;
+    --canvas-100: 35 38 35; /* page background */
+    --canvas-200: 46 50 45;
+    --canvas-300: 63 68 61;
+    --canvas-400: 86 92 82;
 
-    --ink-900: 237 237 232;  /* primary text — off-white, easier on the eyes than pure white */
-    --ink-800: 214 214 206;
-    --ink-700: 182 182 172;
-    --ink-600: 152 152 140;
-    --ink-500: 130 130 118;
-    --ink-400: 138 138 126;  /* muted/secondary text — kept a touch brighter than 500 since it's used everywhere for timestamps and hints */
-    --ink-300: 96 96 87;
+    --ink-900: 232 234 227;  /* primary text — off-white, easier on the eyes than pure white */
+    --ink-800: 210 213 203;
+    --ink-700: 180 184 172;
+    --ink-600: 152 156 143;
+    --ink-500: 132 137 123;
+    --ink-400: 140 145 131;  /* muted/secondary text */
+    --ink-300: 100 105 93;
 
-    /* Cards need to look clearly "raised" off the page — a bigger jump than
-       before (30 → 34 was nearly invisible), plus a shadow further down
-       that actually reads on a dark background. */
-    --surface: 30 32 29;
-    --surface-2: 40 42 38;
+    /* Cards need to look clearly "raised" off the page. */
+    --surface: 46 50 46;
+    --surface-2: 56 61 55;
 
-    --accent: 134 199 165; /* brighter forest — reads clearly on a dark background */
+    --accent: 143 191 170; /* brighter forest — reads clearly on a dark background */
 
-    /* A muddy dark-green button on a near-black page has almost no visual
-       pop. Brightening the primary button specifically for dark mode (while
+    /* A muddy dark-green button on a dark page has almost no visual pop.
+       Brightening the primary button specifically for dark mode (while
        keeping the exact same brand green in light mode) fixes that. */
     --brand-primary: 45 122 94;
     --brand-primary-hover: 56 140 109;
     --brand-gold: 224 172 41;
     --brand-gold-hover: 238 186 58;
+
+    /* Same fixed chrome tone as light mode — this is the whole point:
+       header/footer look identical regardless of theme, so switching
+       themes never makes them feel broken or inconsistent. */
+    --chrome: 25 38 32;
+    --chrome-border: 45 62 53;
+    --chrome-text: 237 240 234;
+    --chrome-text-muted: 168 178 168;
 
     /* Black shadows at 5% opacity are essentially invisible against a dark
        background — shadows need far more contrast to read at all here, plus

@@ -55,10 +55,21 @@ export default {
           400: 'rgb(var(--ink-400) / <alpha-value>)',
           300: 'rgb(var(--ink-300) / <alpha-value>)',
         },
-        // Elevated surfaces (cards, inputs, modals, the navbar) — white in
-        // light mode, a dark charcoal in dark mode, distinct from the page
-        // background so elevation is still visible.
+        // Elevated surfaces (cards, inputs, modals) — off-white in light
+        // mode, a charcoal in dark mode, distinct from the page background
+        // so elevation is still visible.
         surface: 'rgb(var(--surface) / <alpha-value>)',
+        // The Navbar/Footer "chrome" band — a fixed deep forest tone that's
+        // deliberately the SAME in both light and dark mode. It's brand
+        // identity, not page content, so it doesn't invert with the theme —
+        // this is what keeps the header/footer looking consistent and
+        // designed instead of flipping between stark white and near-black.
+        chrome: {
+          DEFAULT: 'rgb(var(--chrome) / <alpha-value>)',
+          border: 'rgb(var(--chrome-border) / <alpha-value>)',
+          text: 'rgb(var(--chrome-text) / <alpha-value>)',
+          muted: 'rgb(var(--chrome-text-muted) / <alpha-value>)',
+        },
         // Accent text/link colour. Equals forest-800 in light mode (dark
         // green reads fine on a light page) but switches to a lighter green
         // in dark mode, since dark green text is unreadable on a dark page.
