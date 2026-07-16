@@ -13,6 +13,7 @@ import Avatar from '../components/ui/Avatar';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { SkeletonRows } from '../components/ui/Skeleton';
+import GradientHero from '../components/ui/GradientHero';
 
 const STATUS_CONFIG = {
   pending: { label: 'Awaiting payment', variant: 'warning' },
@@ -412,24 +413,23 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-canvas-100">
       {/* Header */}
-      <div className="bg-surface border-b border-canvas-300">
-        <div className="section py-8">
+      <GradientHero size="sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-xs font-sans font-semibold uppercase tracking-widest mb-1 text-gold-400">
+              <p className="text-xs font-sans font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgb(var(--brand-gold))' }}>
                 {user?.role}
               </p>
-              <h1 className="font-serif text-ink-900 text-[1.75rem]">
+              <h1 className="font-serif text-white text-[1.75rem]">
                 Good to see you, {user?.name?.split(' ')[0]}
               </h1>
             </div>
             <div className="flex items-center gap-2">
               {user?.role === 'student' && (
-                <Link to="/tutors" className="btn-primary btn-sm">
+                <Link to="/tutors" className="btn-sm rounded-lg font-medium bg-white text-forest-800 hover:bg-canvas-100 px-3 py-1.5 inline-flex items-center transition-colors">
                   Find a tutor
                 </Link>
               )}
-              <Link to="/chat" className="btn-outline btn-sm relative">
+              <Link to="/chat" className="btn-sm rounded-lg font-medium border border-white/25 text-white hover:bg-white/10 px-3 py-1.5 inline-flex items-center relative transition-colors">
                 Messages
                 {totalUnread > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 min-w-[1.1rem] h-[1.1rem] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
@@ -447,14 +447,13 @@ export default function DashboardPage() {
               { label: 'Upcoming', value: stats.upcoming },
               { label: 'Awaiting confirm', value: stats.pending },
             ].map(({ label, value }) => (
-              <div key={label} className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-canvas-200 border border-canvas-300">
-                <span className="font-serif text-xl text-accent">{value}</span>
-                <span className="text-xs text-ink-500 font-medium">{label}</span>
+              <div key={label} className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur-sm">
+                <span className="font-serif text-xl text-white">{value}</span>
+                <span className="text-xs text-white/70 font-medium">{label}</span>
               </div>
             ))}
           </div>
-        </div>
-      </div>
+      </GradientHero>
 
       {/* Bookings table */}
       <div className="section py-8">
@@ -469,7 +468,9 @@ export default function DashboardPage() {
                 key={key}
                 onClick={() => setTab(key)}
                 className={`pb-4 px-4 text-sm font-medium border-b-2 transition-all -mb-px ${
-                  tab === key ? 'border-forest-800 text-accent' : 'border-transparent text-ink-500'
+                  tab === key
+                    ? 'border-accent text-accent'
+                    : 'border-transparent text-ink-500 hover:text-ink-800 hover:bg-canvas-100 rounded-t-lg'
                 }`}
               >
                 {label}

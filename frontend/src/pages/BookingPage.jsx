@@ -15,29 +15,39 @@ const DURATIONS = [
   { value: 120, label: '2 hours' },
 ];
 
-const TIME_SLOTS = ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'];
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const SLOT_STEP_MINUTES = 30; // granularity for generated start times within a range
 
 const timeToMinutes = (t) => {
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
 };
+const minutesToTime = (mins) => `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
 
 // Day-of-week for a plain YYYY-MM-DD string, evaluated at local midnight so
 // it always matches the calendar date the person actually picked.
 const dayNameFor = (dateStr) => DAY_NAMES[new Date(`${dateStr}T00:00:00`).getDay()];
 
-// Which of the fixed TIME_SLOTS actually fit inside one of the tutor's
-// availability windows for the given date, given the chosen session length.
+// Generates real start-time options directly from the tutor's own ranges
+// for the selected date — not a fixed generic grid. A tutor can have any
+// number of separate ranges on the same day (e.g. 9-12 and 14-18); each one
+// contributes its own slots, so nothing is missed or hidden. A session can
+// start every SLOT_STEP_MINUTES within a range, as long as the full
+// session duration still fits before that range ends.
 const getAvailableSlots = (dateStr, duration, availability) => {
   if (!dateStr || !availability?.length) return [];
   const daySlots = availability.filter((a) => a.day === dayNameFor(dateStr));
   if (!daySlots.length) return [];
-  return TIME_SLOTS.filter((t) => {
-    const start = timeToMinutes(t);
-    const end = start + duration;
-    return daySlots.some((slot) => start >= timeToMinutes(slot.startTime) && end <= timeToMinutes(slot.endTime));
-  });
+
+  const slots = [];
+  for (const range of daySlots) {
+    const start = timeToMinutes(range.startTime);
+    const end = timeToMinutes(range.endTime);
+    for (let t = start; t + duration <= end; t += SLOT_STEP_MINUTES) {
+      slots.push(minutesToTime(t));
+    }
+  }
+  return [...new Set(slots)].sort();
 };
 
 // Earliest upcoming date (within 2 weeks) that falls on a day the tutor is
@@ -205,7 +215,12 @@ export default function BookingPage() {
                 onChange={(e) => setForm({ ...form, date: e.target.value })} required />
               {tutor.availability?.length > 0 && (
                 <p className="text-xs text-ink-400 mt-1.5">
-                  Available: {[...new Set(tutor.availability.map((a) => a.day))].join(', ')}
+                  Available: {DAY_NAMES.filter((d) => tutor.availability.some((a) => a.day === d))
+                    .map((d) => {
+                      const ranges = tutor.availability.filter((a) => a.day === d);
+                      return `${d.slice(0, 3)} (${ranges.map((r) => `${r.startTime}–${r.endTime}`).join(', ')})`;
+                    })
+                    .join(' · ')}
                 </p>
               )}
             </div>

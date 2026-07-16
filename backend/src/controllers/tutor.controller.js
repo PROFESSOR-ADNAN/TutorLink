@@ -3,6 +3,30 @@ const User = require("../models/User.model");
 const { AppError } = require("../middleware/error.middleware");
 const catchAsync = require("../utils/catchAsync");
 
+// A day can have any number of separate time ranges (e.g. mornings and
+// evenings) — this checks each range is internally valid (end after start)
+// and that ranges on the same day don't overlap each other. Runs
+// server-side regardless of what the frontend already checked, since a
+// client can send anything.
+function validateAvailability(availability = []) {
+  const byDay = {};
+  for (const slot of availability) {
+    if (slot.startTime >= slot.endTime) {
+      return `${slot.day}: each time range must end after it starts`;
+    }
+    (byDay[slot.day] ||= []).push(slot);
+  }
+  for (const [day, ranges] of Object.entries(byDay)) {
+    ranges.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    for (let i = 1; i < ranges.length; i++) {
+      if (ranges[i].startTime < ranges[i - 1].endTime) {
+        return `${day}: two time ranges overlap`;
+      }
+    }
+  }
+  return null;
+}
+
 // ─── Search/Browse Tutors ─────────────────────────────────
 exports.getTutors = catchAsync(async (req, res, next) => {
   const {
@@ -82,6 +106,9 @@ exports.getTutor = catchAsync(async (req, res, next) => {
 
 // ─── Create Tutor Profile ─────────────────────────────────
 exports.createTutorProfile = catchAsync(async (req, res, next) => {
+  const availabilityError = validateAvailability(req.body.availability);
+  if (availabilityError) return next(new AppError(availabilityError, 400));
+
   const existing = await Tutor.findOne({ user: req.user._id });
 
   if (existing) {
@@ -119,6 +146,11 @@ exports.createTutorProfile = catchAsync(async (req, res, next) => {
 
 // ─── Update Tutor Profile ─────────────────────────────────
 exports.updateTutorProfile = catchAsync(async (req, res, next) => {
+  if (req.body.availability) {
+    const availabilityError = validateAvailability(req.body.availability);
+    if (availabilityError) return next(new AppError(availabilityError, 400));
+  }
+
   // No isAvailable filter here — a deactivated tutor should still
   // be able to update their profile (e.g. before reactivating)
   const tutor = await Tutor.findOne({ user: req.user._id });

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import Avatar from '../components/ui/Avatar';
+import GradientHero from '../components/ui/GradientHero';
 
 const SUBJECTS = ['Mathematics','Physics','Chemistry','Programming','English','Biology','History','Spanish','Economics','Music'];
 
@@ -156,9 +157,7 @@ export default function TutorsPage() {
   return (
     <div className="min-h-screen bg-canvas-100">
       {/* Hero */}
-      <div className="relative overflow-hidden border-b border-canvas-300" style={{ background: 'linear-gradient(155deg, rgb(var(--brand-primary)) 0%, rgb(var(--brand-primary-hover)) 100%)' }}>
-        <div className="absolute inset-0 bg-grid-canvas opacity-10 pointer-events-none" />
-        <div className="section py-12 md:py-14 relative">
+      <GradientHero size="lg">
           <p className="text-xs font-sans font-semibold uppercase tracking-widest mb-3" style={{ color: 'rgb(var(--brand-gold))' }}>
             {loading ? 'Loading tutors…' : `${pagination.total || 0} verified tutors`}
           </p>
@@ -197,8 +196,7 @@ export default function TutorsPage() {
               </button>
             ))}
           </div>
-        </div>
-      </div>
+      </GradientHero>
 
       <div className="section py-8">
         <div className="flex flex-col lg:flex-row gap-8">

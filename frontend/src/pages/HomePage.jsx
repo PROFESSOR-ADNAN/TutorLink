@@ -114,7 +114,7 @@ function TutorCardStack({ tutors, loading }) {
       <div
         className="absolute -top-4 -right-2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-white"
         style={{
-          background: "#1B4332",
+          background: "rgb(var(--brand-primary))",
           boxShadow: "0 4px 12px rgb(27 67 50 / 0.35)",
         }}
       >
@@ -150,10 +150,7 @@ export default function HomePage() {
   return (
     <div className="bg-canvas-100">
       {/* ─── Hero ──────────────────────────────────────────── */}
-      <section
-        className="relative overflow-hidden"
-        style={{ background: "#FAFAF7" }}
-      >
+      <section className="relative overflow-hidden bg-canvas-100">
         {/* Subtle grid background */}
         <div className="absolute inset-0 bg-grid-canvas opacity-60 pointer-events-none" />
 
@@ -162,7 +159,7 @@ export default function HomePage() {
           className="absolute top-0 left-0 right-0 h-0.5"
           style={{
             background:
-              "linear-gradient(90deg, transparent, #1B4332 30%, #D4A017 60%, transparent)",
+              "linear-gradient(90deg, transparent, rgb(var(--brand-primary)) 30%, rgb(var(--brand-gold)) 60%, transparent)",
           }}
         />
 
@@ -172,34 +169,33 @@ export default function HomePage() {
             <div className="flex-1 max-w-xl animate-fade-up">
               {/* Eyebrow */}
               <div className="flex items-center gap-2 mb-6">
-                <div className="h-px w-8" style={{ background: "#D4A017" }} />
+                <div className="h-px w-8" style={{ background: "rgb(var(--brand-gold))" }} />
                 <span
                   className="text-xs font-sans font-semibold uppercase tracking-widest"
-                  style={{ color: "#7f570d" }}
+                  style={{ color: "rgb(var(--brand-gold))" }}
                 >
                   Expert tutoring, on demand
                 </span>
               </div>
 
               <h1
-                className="font-serif mb-6"
+                className="font-serif mb-6 text-ink-900"
                 style={{
                   fontSize: "clamp(2.5rem, 5vw, 4rem)",
                   lineHeight: 1.06,
                   letterSpacing: "-0.025em",
-                  color: "#141410",
                 }}
               >
                 Learn from{" "}
-                <span className="italic" style={{ color: "#1B4332" }}>
+                <span className="italic text-accent">
                   experts
                 </span>{" "}
                 who've been where you're going
               </h1>
 
               <p
-                className="font-sans text-base mb-10 leading-relaxed"
-                style={{ color: "#6B6B61", maxWidth: "38ch" }}
+                className="font-sans text-base mb-10 leading-relaxed text-ink-500"
+                style={{ maxWidth: "38ch" }}
               >
                 Book live 1-on-1 sessions with verified tutors. Pick your
                 subject, pick your time — start learning today.
@@ -208,17 +204,12 @@ export default function HomePage() {
               {/* Search bar */}
               <form
                 onSubmit={handleSearch}
-                className="flex items-stretch rounded-xl overflow-hidden mb-6"
-                style={{
-                  border: "1.5px solid #EAEAE3",
-                  background: "#fff",
-                  boxShadow: "0 4px 16px rgb(0 0 0 / 0.06)",
-                }}
+                className="flex items-stretch rounded-xl overflow-hidden mb-6 bg-surface border border-canvas-300"
+                style={{ boxShadow: "0 4px 16px rgb(0 0 0 / 0.06)" }}
               >
                 <div className="flex items-center px-4 gap-3 flex-1">
                   <svg
-                    className="w-4 h-4 flex-shrink-0"
-                    style={{ color: "#8C8C82" }}
+                    className="w-4 h-4 flex-shrink-0 text-ink-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -252,26 +243,11 @@ export default function HomePage() {
                   <button
                     key={name}
                     onClick={() => navigate(`/tutors?subject=${name}`)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
-                    style={{
-                      background: "#F4F4EF",
-                      color: "#4A4A42",
-                      border: "1px solid #EAEAE3",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "#1B4332";
-                      e.currentTarget.style.color = "#1B4332";
-                      e.currentTarget.style.background = "#f0f7f4";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#EAEAE3";
-                      e.currentTarget.style.color = "#4A4A42";
-                      e.currentTarget.style.background = "#F4F4EF";
-                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 bg-canvas-200 text-ink-600 border border-canvas-300 hover:border-accent hover:text-accent hover:bg-accent/10"
                   >
                     <span
                       className="font-mono text-xs"
-                      style={{ color: "#D4A017" }}
+                      style={{ color: "rgb(var(--brand-gold))" }}
                     >
                       {icon}
                     </span>
@@ -293,7 +269,7 @@ export default function HomePage() {
       </section>
 
       {/* ─── Stats bar ─────────────────────────────────────── */}
-      <section style={{ background: "#1B4332" }}>
+      <section style={{ background: "rgb(var(--brand-primary))" }}>
         <div className="section py-8">
           <div
             className="grid grid-cols-3 gap-6 md:gap-0 md:divide-x max-w-lg mx-auto md:max-w-none"
@@ -328,16 +304,13 @@ export default function HomePage() {
           <div>
             <p
               className="text-xs font-sans font-semibold uppercase tracking-widest mb-3"
-              style={{ color: "#D4A017" }}
+              style={{ color: "rgb(var(--brand-gold))" }}
             >
               The process
             </p>
             <h2
-              className="font-serif"
-              style={{
-                fontSize: "clamp(1.8rem, 3vw, 2.5rem)",
-                color: "#141410",
-              }}
+              className="font-serif text-ink-900"
+              style={{ fontSize: "clamp(1.8rem, 3vw, 2.5rem)" }}
             >
               Three steps to your
               <br className="hidden sm:block" /> first session
@@ -374,32 +347,19 @@ export default function HomePage() {
             },
           ].map(({ n, title, body, cta, href }) => (
             <div key={n} className="card-hover p-8 group">
-              <div
-                className="font-serif text-5xl mb-6 leading-none"
-                style={{ color: "#EAEAE3" }}
-              >
+              <div className="font-serif text-5xl mb-6 leading-none text-canvas-400">
                 {n}
               </div>
               <h3 className="font-sans font-semibold text-ink-900 text-base mb-3 group-hover:text-accent transition-colors">
                 {title}
               </h3>
-              <p
-                className="font-sans text-sm leading-relaxed mb-4"
-                style={{ color: "#6B6B61" }}
-              >
+              <p className="font-sans text-sm leading-relaxed mb-4 text-ink-500">
                 {body}
               </p>
               {cta && href && (
                 <Link
                   to={href}
-                  className="text-sm font-medium transition-colors"
-                  style={{ color: "#1B4332" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "#D4A017")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "#1B4332")
-                  }
+                  className="text-sm font-medium transition-colors text-accent hover:opacity-80"
                 >
                   {cta} →
                 </Link>
@@ -411,25 +371,20 @@ export default function HomePage() {
 
       {/* ─── Subjects grid ─────────────────────────────────── */}
       <section
-        style={{
-          background: "#F4F4EF",
-          borderTop: "1px solid #EAEAE3",
-          borderBottom: "1px solid #EAEAE3",
-        }}
+        className="relative overflow-hidden"
+        style={{ background: 'linear-gradient(155deg, rgb(var(--brand-primary)) 0%, rgb(var(--brand-primary-hover)) 100%)' }}
       >
-        <div className="section py-20">
+        <div className="absolute inset-0 bg-grid-canvas opacity-10 pointer-events-none" />
+        <div className="section py-20 relative">
           <p
             className="text-xs font-sans font-semibold uppercase tracking-widest mb-3 text-center"
-            style={{ color: "#D4A017" }}
+            style={{ color: 'rgb(var(--brand-gold))' }}
           >
             Subjects
           </p>
           <h2
-            className="font-serif text-center mb-12"
-            style={{
-              fontSize: "clamp(1.6rem, 2.5vw, 2.2rem)",
-              color: "#141410",
-            }}
+            className="font-serif text-center mb-12 text-white"
+            style={{ fontSize: "clamp(1.6rem, 2.5vw, 2.2rem)" }}
           >
             Whatever you're learning, we've got a tutor
           </h2>
@@ -438,22 +393,9 @@ export default function HomePage() {
               <button
                 key={name}
                 onClick={() => navigate(`/tutors?subject=${name}`)}
-                className="flex items-center gap-3 p-4 rounded-xl text-left group transition-all duration-150"
-                style={{ background: "#fff", border: "1px solid #EAEAE3" }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#1B4332";
-                  e.currentTarget.style.boxShadow =
-                    "0 4px 12px rgb(27 67 50 / 0.08)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#EAEAE3";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
+                className="flex items-center gap-3 p-4 rounded-xl text-left group transition-all duration-150 bg-surface border border-transparent hover:border-accent hover:shadow-hover"
               >
-                <span
-                  className="w-8 h-8 rounded-lg flex items-center justify-center font-mono text-sm font-bold flex-shrink-0"
-                  style={{ background: "#f0f7f4", color: "#1B4332" }}
-                >
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center font-mono text-sm font-bold flex-shrink-0 bg-accent/10 text-accent">
                   {icon}
                 </span>
                 <span className="font-sans font-medium text-sm text-ink-800 group-hover:text-accent transition-colors">
@@ -470,7 +412,7 @@ export default function HomePage() {
         <section className="section py-24">
           <div
             className="rounded-2xl overflow-hidden relative"
-            style={{ background: "#1B4332" }}
+            style={{ background: 'linear-gradient(155deg, rgb(var(--brand-primary)) 0%, rgb(var(--brand-primary-hover)) 100%)' }}
           >
             {/* Subtle texture */}
             <div className="absolute inset-0 bg-grid-canvas opacity-5 pointer-events-none" />
@@ -478,7 +420,7 @@ export default function HomePage() {
               <div className="max-w-lg">
                 <p
                   className="text-xs font-sans font-semibold uppercase tracking-widest mb-4"
-                  style={{ color: "#D4A017" }}
+                  style={{ color: 'rgb(var(--brand-gold))' }}
                 >
                   Get started today
                 </p>

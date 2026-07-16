@@ -15,6 +15,13 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 const EDUCATION_LEVELS = ['High School', "Bachelor's", "Master's", 'PhD', 'Other'];
 const LANGUAGES_LIST = ['English', 'Amharic', 'Arabic', 'French', 'Spanish', 'Oromo'];
 
+/** "14:00" -> "15:00", capped at 23:00 so it never rolls past a single day. */
+function addHour(time) {
+  const [h, m] = time.split(':').map(Number);
+  const nextH = Math.min(h + 1, 23);
+  return `${String(nextH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 const NAV_ITEMS = [
   { key: 'personal', label: 'Personal Info', icon: '👤' },
   { key: 'tutor', label: 'Tutor Profile', icon: '🎓', tutorOnly: true },
@@ -276,6 +283,20 @@ export default function ProfilePage() {
     if (tutorProfile.subjects.length === 0) return toast.error('Select at least one subject');
     if (!tutorProfile.hourlyRate || tutorProfile.hourlyRate < 1) return toast.error('Hourly rate must be at least $1');
 
+    for (const day of DAYS) {
+      const ranges = tutorProfile.availability
+        .filter((a) => a.day === day)
+        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+      for (let i = 0; i < ranges.length; i++) {
+        if (ranges[i].startTime >= ranges[i].endTime) {
+          return toast.error(`${day}: each time range must end after it starts`);
+        }
+        if (i > 0 && ranges[i].startTime < ranges[i - 1].endTime) {
+          return toast.error(`${day}: two of your time ranges overlap — please adjust them`);
+        }
+      }
+    }
+
     setSaving(true);
     try {
       if (hasTutorProfile) {
@@ -326,22 +347,37 @@ export default function ProfilePage() {
       languages: f.languages.includes(l) ? f.languages.filter((x) => x !== l) : [...f.languages, l],
     }));
 
-  const toggleDay = (day) => {
-    const exists = tutorProfile.availability.find((a) => a.day === day);
-    if (exists) {
-      setTutorProfile((f) => ({ ...f, availability: f.availability.filter((a) => a.day !== day) }));
-    } else {
-      setTutorProfile((f) => ({
-        ...f,
-        availability: [...f.availability, { day, startTime: '09:00', endTime: '17:00' }],
-      }));
-    }
-  };
+  // A day can now have any number of separate time ranges (e.g. 9-12 and
+  // 14-18 on the same day) — availability is just a flat array of
+  // {day, startTime, endTime} entries, so "multiple ranges for one day" is
+  // simply multiple entries sharing the same `day`. Addressed by index
+  // since a day is no longer a unique key into the array.
+  const addAvailabilityRange = (day) => {
+    // Default the new range to start right after the day's last range ends,
+    // so adding a second range doesn't just duplicate the first one.
+    const existingForDay = tutorProfile.availability.filter((a) => a.day === day);
+    const last = existingForDay[existingForDay.length - 1];
+    const defaults = last
+      ? { startTime: last.endTime, endTime: last.endTime >= '22:00' ? '23:00' : addHour(last.endTime) }
+      : { startTime: '09:00', endTime: '17:00' };
 
-  const updateAvailabilityTime = (day, field, value) =>
     setTutorProfile((f) => ({
       ...f,
-      availability: f.availability.map((a) => (a.day === day ? { ...a, [field]: value } : a)),
+      availability: [...f.availability, { day, ...defaults }],
+    }));
+  };
+
+  const removeAvailabilityRange = (index) => {
+    setTutorProfile((f) => ({
+      ...f,
+      availability: f.availability.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateAvailabilityRange = (index, field, value) =>
+    setTutorProfile((f) => ({
+      ...f,
+      availability: f.availability.map((a, i) => (i === index ? { ...a, [field]: value } : a)),
     }));
 
   const visibleNavItems = NAV_ITEMS.filter((item) => !item.tutorOnly || user?.role === 'tutor');
@@ -776,24 +812,42 @@ export default function ProfilePage() {
 
                     <Card padding="lg">
                       <h2 className="font-sans font-semibold text-ink-900 text-base mb-1">Weekly availability</h2>
-                      <p className="text-sm text-ink-400 mb-4">Select days you're available, then set hours. Optional.</p>
-                      <div className="space-y-2.5">
+                      <p className="text-sm text-ink-400 mb-4">
+                        Add one or more time ranges per day — e.g. mornings and evenings on the same day. Optional.
+                      </p>
+                      <div className="space-y-4">
                         {DAYS.map((day) => {
-                          const slot = tutorProfile.availability.find((a) => a.day === day);
+                          const ranges = tutorProfile.availability
+                            .map((a, i) => ({ ...a, index: i }))
+                            .filter((a) => a.day === day);
                           return (
-                            <div key={day} className="flex items-center gap-3 flex-wrap">
-                              <Chip active={!!slot} onClick={() => toggleDay(day)} className="w-24 justify-center">
-                                {day.slice(0, 3)}
-                              </Chip>
-                              {slot && (
-                                <div className="flex items-center gap-2">
-                                  <input type="time" className="input py-1.5 w-32" value={slot.startTime}
-                                    onChange={(e) => updateAvailabilityTime(day, 'startTime', e.target.value)} />
-                                  <span className="text-ink-400 text-sm">to</span>
-                                  <input type="time" className="input py-1.5 w-32" value={slot.endTime}
-                                    onChange={(e) => updateAvailabilityTime(day, 'endTime', e.target.value)} />
-                                </div>
-                              )}
+                            <div key={day} className="flex flex-col sm:flex-row sm:items-start gap-3">
+                              <div className="w-24 flex-shrink-0 pt-2">
+                                <span className={`text-sm font-medium ${ranges.length ? 'text-ink-900' : 'text-ink-400'}`}>
+                                  {day.slice(0, 3)}
+                                </span>
+                              </div>
+                              <div className="flex-1 space-y-2">
+                                {ranges.map((r) => (
+                                  <div key={r.index} className="flex items-center gap-2">
+                                    <input type="time" className="input py-1.5 w-32" value={r.startTime}
+                                      onChange={(e) => updateAvailabilityRange(r.index, 'startTime', e.target.value)} />
+                                    <span className="text-ink-400 text-sm">to</span>
+                                    <input type="time" className="input py-1.5 w-32" value={r.endTime}
+                                      onChange={(e) => updateAvailabilityRange(r.index, 'endTime', e.target.value)} />
+                                    <button type="button" onClick={() => removeAvailabilityRange(r.index)}
+                                      className="text-ink-400 hover:text-red-500 transition-colors p-1" aria-label="Remove this time range">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                ))}
+                                <button type="button" onClick={() => addAvailabilityRange(day)}
+                                  className="text-xs font-medium text-accent hover:underline">
+                                  + Add {ranges.length ? 'another' : 'a'} time range
+                                </button>
+                              </div>
                             </div>
                           );
                         })}

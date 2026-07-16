@@ -44,8 +44,8 @@
        Tailwind config comment on the `chrome` colour for why). A deep,
        muted forest-charcoal reads as intentional brand identity rather
        than "the site forgot to theme this part." */
-    --chrome: 25 38 32;
-    --chrome-border: 42 58 49;
+    --chrome: 34 54 46;
+    --chrome-border: 54 74 64;
     --chrome-text: 237 240 234;
     --chrome-text-muted: 168 178 168;
 
@@ -90,8 +90,8 @@
     /* Same fixed chrome tone as light mode — this is the whole point:
        header/footer look identical regardless of theme, so switching
        themes never makes them feel broken or inconsistent. */
-    --chrome: 25 38 32;
-    --chrome-border: 45 62 53;
+    --chrome: 34 54 46;
+    --chrome-border: 56 76 66;
     --chrome-text: 237 240 234;
     --chrome-text-muted: 168 178 168;
 

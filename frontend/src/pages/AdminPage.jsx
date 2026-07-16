@@ -11,6 +11,7 @@ import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { SkeletonRows } from '../components/ui/Skeleton';
+import GradientHero from '../components/ui/GradientHero';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -486,32 +487,37 @@ export default function AdminPage() {
   const [tab, setTab] = useState('overview');
 
   return (
-    <div className="section py-10">
-      <div className="mb-8">
-        <h1 className="font-serif text-2xl text-ink-900">Admin</h1>
-        <p className="text-sm text-ink-400">Manage tutors, users, and keep an eye on the platform.</p>
-      </div>
+    <div>
+      <GradientHero size="sm">
+        <p className="text-xs font-sans font-semibold uppercase tracking-widest mb-1" style={{ color: 'rgb(var(--brand-gold))' }}>
+          Control center
+        </p>
+        <h1 className="font-serif text-white text-2xl">Admin</h1>
+        <p className="text-sm text-white/60 mt-1">Manage tutors, users, and keep an eye on the platform.</p>
+      </GradientHero>
 
-      <div className="flex gap-1 border-b border-canvas-300 mb-6 overflow-x-auto">
-        {TABS.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-              tab === key ? 'border-forest-800 text-accent' : 'border-transparent text-ink-500 hover:text-ink-800'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <div className="section py-8">
+        <div className="flex gap-1 border-b border-canvas-300 mb-6 overflow-x-auto">
+          {TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                tab === key ? 'border-accent text-accent' : 'border-transparent text-ink-500 hover:text-ink-800'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
-      {tab === 'overview' && <OverviewTab />}
-      {tab === 'earnings' && <EarningsTab />}
-      {tab === 'approvals' && <ApprovalsTab />}
-      {tab === 'cancellations' && <CancellationsTab />}
-      {tab === 'users' && <UsersTab />}
-      {tab === 'bookings' && <BookingsTab />}
+        {tab === 'overview' && <OverviewTab />}
+        {tab === 'earnings' && <EarningsTab />}
+        {tab === 'approvals' && <ApprovalsTab />}
+        {tab === 'cancellations' && <CancellationsTab />}
+        {tab === 'users' && <UsersTab />}
+        {tab === 'bookings' && <BookingsTab />}
+      </div>
     </div>
   );
 }

@@ -14,7 +14,7 @@ function ConversationItem({ conv, isActive, onClick }) {
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-canvas-100 transition-colors text-left ${
-        isActive ? "bg-forest-50 border-r-2 border-forest-800" : ""
+        isActive ? "bg-accent/10 border-r-2 border-accent" : ""
       }`}
     >
       <div className="relative flex-shrink-0">
@@ -279,11 +279,15 @@ export default function ChatPage() {
           <div
             className={`w-full sm:w-72 flex-shrink-0 border-r border-canvas-300 flex-col ${activeUserId ? "hidden sm:flex" : "flex"}`}
           >
-            <div className="px-4 py-4 border-b border-canvas-300 flex items-center justify-between">
-              <h2 className="font-serif text-lg text-ink-900">Messages</h2>
+            <div
+              className="relative overflow-hidden px-4 py-4 flex items-center justify-between"
+              style={{ background: 'linear-gradient(155deg, rgb(var(--brand-primary)) 0%, rgb(var(--brand-primary-hover)) 100%)' }}
+            >
+              <div className="absolute inset-0 bg-grid-canvas opacity-10 pointer-events-none" />
+              <h2 className="font-serif text-lg text-white relative">Messages</h2>
               <button
                 onClick={handleContactSupport}
-                className="text-xs font-semibold text-accent hover:underline"
+                className="text-xs font-semibold relative" style={{ color: 'rgb(var(--brand-gold))' }}
               >
                 Contact support
               </button>

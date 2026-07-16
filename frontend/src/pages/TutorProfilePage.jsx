@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../services/api';
 import useAuthStore from '../context/authStore';
 import Avatar from '../components/ui/Avatar';
+import GradientHero from '../components/ui/GradientHero';
 
 function Stars({ rating }) {
   return (
@@ -47,38 +48,39 @@ export default function TutorProfilePage() {
   return (
     <div className="min-h-screen bg-canvas-100">
       {/* Hero strip */}
-      <div className="bg-surface border-b border-canvas-300">
-        <div className="section py-8">
-          <Link to="/tutors" className="inline-flex items-center gap-1.5 text-sm text-ink-400 hover:text-ink-700 transition-colors mb-6">
+      <GradientHero size="md">
+          <Link to="/tutors" className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors mb-6">
             ← All tutors
           </Link>
           <div className="flex flex-col sm:flex-row gap-6 items-start">
             <div className="relative flex-shrink-0">
-              <Avatar src={tutor.user?.avatar} name={tutor.user?.name} size="xl" className="!w-20 !h-20 !rounded-2xl" />
-              <span className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-green-400 rounded-full ring-2 ring-surface" />
+              <Avatar src={tutor.user?.avatar} name={tutor.user?.name} size="xl" className="!w-20 !h-20 !rounded-2xl ring-4 ring-white/15" />
+              <span className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-green-400 rounded-full ring-2 ring-forest-800" />
             </div>
             <div className="flex-1">
-              <h1 className="font-serif text-ink-900 mb-0.5" style={{ fontSize: '1.75rem' }}>{tutor.user?.name}</h1>
-              <p className="text-sm text-ink-400 mb-3">
+              <h1 className="font-serif text-white mb-0.5" style={{ fontSize: '1.75rem' }}>{tutor.user?.name}</h1>
+              <p className="text-sm text-white/60 mb-3">
                 {tutor.educationLevel}{tutor.university ? ` · ${tutor.university}` : ''}
                 {tutor.user?.location ? ` · ${tutor.user.location}` : ''}
               </p>
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
                   <Stars rating={tutor.averageRating} />
-                  <span className="text-sm font-medium text-ink-700">
+                  <span className="text-sm font-medium text-white">
                     {tutor.averageRating > 0 ? tutor.averageRating.toFixed(1) : 'New'}
                   </span>
-                  <span className="text-sm text-ink-400">({tutor.totalReviews} reviews)</span>
+                  <span className="text-sm text-white/50">({tutor.totalReviews} reviews)</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {tutor.subjects.map(s => <span key={s} className="badge badge-forest">{s}</span>)}
+                  {tutor.subjects.map(s => (
+                    <span key={s} className="text-xs font-medium px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-white/85">{s}</span>
+                  ))}
                 </div>
               </div>
             </div>
             {/* Booking CTA — sticky */}
             <div className="w-full sm:w-auto">
-              <div className="card p-5 min-w-[200px]">
+              <div className="card p-5 min-w-[200px] shadow-modal">
                 <div className="flex items-baseline gap-1 mb-4">
                   <span className="font-serif text-3xl text-ink-900">${tutor.hourlyRate}</span>
                   <span className="text-sm text-ink-400">/hr</span>
@@ -107,8 +109,7 @@ export default function TutorProfilePage() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
+      </GradientHero>
 
       {/* Content */}
       <div className="section py-8 grid lg:grid-cols-3 gap-6">
@@ -180,10 +181,15 @@ export default function TutorProfilePage() {
             <div className="card p-5">
               <h3 className="font-sans font-semibold text-ink-900 text-sm mb-4">Availability</h3>
               <div className="space-y-2">
-                {tutor.availability.map((slot, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-ink-700">{slot.day.slice(0,3)}</span>
-                    <span className="text-ink-400">{slot.startTime} – {slot.endTime}</span>
+                {[...new Set(tutor.availability.map((s) => s.day))].map((day) => (
+                  <div key={day} className="flex items-start justify-between text-sm gap-3">
+                    <span className="font-medium text-ink-700 flex-shrink-0">{day.slice(0, 3)}</span>
+                    <span className="text-ink-400 text-right">
+                      {tutor.availability
+                        .filter((s) => s.day === day)
+                        .map((s) => `${s.startTime}–${s.endTime}`)
+                        .join(', ')}
+                    </span>
                   </div>
                 ))}
               </div>
