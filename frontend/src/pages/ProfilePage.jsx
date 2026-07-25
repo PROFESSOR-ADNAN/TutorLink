@@ -216,13 +216,19 @@ export default function ProfilePage() {
   };
 
   const handleCoverSelect = async (e) => {
+    console.log(e.target)
+    console.log("whatssss")
+    console.log(e.target.files)
+    console.log(e.target.value)
     const file = e.target.files?.[0];
+
     e.target.value = '';
     if (!file) return;
 
     setUploadingCover(true);
     const formData = new FormData();
     formData.append('image', file);
+    console.log(formData)
     try {
       const { user: updated } = await api.post('/users/me/cover', formData);
       updateUser(updated);
@@ -428,7 +434,7 @@ export default function ProfilePage() {
         className="relative h-40 sm:h-48 bg-gradient-to-br from-forest-800 to-forest-600 bg-cover bg-center"
         style={user?.coverImage ? { backgroundImage: `url(${user.coverImage})` } : undefined}
       >
-        {!user?.coverImage && <div className="absolute inset-0 bg-grid-canvas opacity-10" />}
+        {!user?.coverImage && <div className="absolute inset-0 stripes-hero" />}
         {/* Dark scrim so the edit button stays legible on any photo */}
         {user?.coverImage && <div className="absolute inset-0 bg-black/10" />}
 

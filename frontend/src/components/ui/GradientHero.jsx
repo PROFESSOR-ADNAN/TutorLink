@@ -5,7 +5,7 @@
  * --brand-primary-hover CSS variables, so nothing extra is needed per page.
  *
  * Callers supply their own inner content (title, stats, actions, etc.) as
- * children — this component only owns the background, grid texture, and
+ * children — this component only owns the background, stripe texture, and
  * padding. Use light text classes (text-white, text-gold-400) inside it,
  * since the gradient is always a dark forest tone regardless of theme.
  *
@@ -23,7 +23,7 @@ export default function GradientHero({ size = 'md', className = '', children }) 
       className={`relative overflow-hidden border-b border-canvas-300 ${className}`}
       style={{ background: 'linear-gradient(155deg, rgb(var(--brand-primary)) 0%, rgb(var(--brand-primary-hover)) 100%)' }}
     >
-      <div className="absolute inset-0 bg-grid-canvas opacity-10 pointer-events-none" />
+      <div className="absolute inset-0 stripes-hero pointer-events-none" />
       <div className={`section relative ${PADDING[size] || PADDING.md}`}>
         {children}
       </div>

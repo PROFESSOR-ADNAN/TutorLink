@@ -55,7 +55,7 @@ export default function AuthSidePanel() {
         background: 'linear-gradient(155deg, #1B4332 0%, #163728 55%, #0c2118 100%)',
       }}
     >
-      <div className="absolute inset-0 bg-grid-canvas opacity-[0.06]" />
+      <div className="absolute inset-0 stripes-hero" />
       {/* Soft gold glow, top-right — keeps the panel from feeling flat/uniform green */}
       <div
         className="absolute -top-24 -right-24 w-72 h-72 rounded-full opacity-20 blur-3xl"

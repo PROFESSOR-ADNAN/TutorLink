@@ -189,7 +189,7 @@ export default function TutorsPage() {
                 className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
                   filters.subject === s
                     ? 'bg-white text-ink-900'
-                    : 'text-white border border-white/25 hover:bg-white/10'
+                    : 'surface-brand-glass text-white'
                 }`}
               >
                 {s}

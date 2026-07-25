@@ -64,7 +64,7 @@ function TutorCardStack({ tutors, loading }) {
         : tutors.map((t, i) => (
             <div
               key={t._id}
-              className="absolute card p-4 w-64"
+              className="absolute card surface-brand p-4 w-64"
               style={{
                 top: `${i * 72}px`,
                 left: `${i * 16}px`,
@@ -151,8 +151,8 @@ export default function HomePage() {
     <div className="bg-canvas-100">
       {/* ─── Hero ──────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-canvas-100">
-        {/* Subtle grid background */}
-        <div className="absolute inset-0 bg-grid-canvas opacity-60 pointer-events-none" />
+        {/* Subtle green stripe texture over the page background */}
+        <div className="absolute inset-0 stripes-brand-bg pointer-events-none" />
 
         {/* Top accent line */}
         <div
@@ -243,7 +243,7 @@ export default function HomePage() {
                   <button
                     key={name}
                     onClick={() => navigate(`/tutors?subject=${name}`)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 bg-canvas-200 text-ink-600 border border-canvas-300 hover:border-accent hover:text-accent hover:bg-accent/10"
+                    className="surface-brand-soft flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 text-ink-600 hover:text-accent"
                   >
                     <span
                       className="font-mono text-xs"
@@ -269,8 +269,9 @@ export default function HomePage() {
       </section>
 
       {/* ─── Stats bar ─────────────────────────────────────── */}
-      <section style={{ background: "rgb(var(--brand-primary))" }}>
-        <div className="section py-8">
+      <section className="relative overflow-hidden" style={{ background: "rgb(var(--brand-primary))" }}>
+        <div className="absolute inset-0 stripes-hero pointer-events-none" />
+        <div className="section py-8 relative">
           <div
             className="grid grid-cols-3 gap-6 md:gap-0 md:divide-x max-w-lg mx-auto md:max-w-none"
             style={{
@@ -346,7 +347,7 @@ export default function HomePage() {
               cta: null,
             },
           ].map(({ n, title, body, cta, href }) => (
-            <div key={n} className="card-hover p-8 group">
+            <div key={n} className="card-hover surface-brand p-8 group">
               <div className="font-serif text-5xl mb-6 leading-none text-canvas-400">
                 {n}
               </div>
@@ -374,7 +375,7 @@ export default function HomePage() {
         className="relative overflow-hidden"
         style={{ background: 'linear-gradient(155deg, rgb(var(--brand-primary)) 0%, rgb(var(--brand-primary-hover)) 100%)' }}
       >
-        <div className="absolute inset-0 bg-grid-canvas opacity-10 pointer-events-none" />
+        <div className="absolute inset-0 stripes-hero pointer-events-none" />
         <div className="section py-20 relative">
           <p
             className="text-xs font-sans font-semibold uppercase tracking-widest mb-3 text-center"
@@ -393,12 +394,13 @@ export default function HomePage() {
               <button
                 key={name}
                 onClick={() => navigate(`/tutors?subject=${name}`)}
-                className="flex items-center gap-3 p-4 rounded-xl text-left group transition-all duration-150 bg-surface border border-transparent hover:border-accent hover:shadow-hover"
+                className="surface-brand-glass flex items-center gap-3 p-4 rounded-xl text-left group"
               >
-                <span className="w-8 h-8 rounded-lg flex items-center justify-center font-mono text-sm font-bold flex-shrink-0 bg-accent/10 text-accent">
+                <span className="w-8 h-8 rounded-lg flex items-center justify-center font-mono text-sm font-bold flex-shrink-0"
+                  style={{ background: 'rgb(255 255 255 / 0.12)', color: 'rgb(var(--brand-gold))' }}>
                   {icon}
                 </span>
-                <span className="font-sans font-medium text-sm text-ink-800 group-hover:text-accent transition-colors">
+                <span className="font-sans font-medium text-sm text-white group-hover:text-gold-300 transition-colors">
                   {name}
                 </span>
               </button>
@@ -415,7 +417,7 @@ export default function HomePage() {
             style={{ background: 'linear-gradient(155deg, rgb(var(--brand-primary)) 0%, rgb(var(--brand-primary-hover)) 100%)' }}
           >
             {/* Subtle texture */}
-            <div className="absolute inset-0 bg-grid-canvas opacity-5 pointer-events-none" />
+            <div className="absolute inset-0 stripes-hero pointer-events-none" />
             <div className="relative px-8 py-16 md:px-16 md:py-20 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
               <div className="max-w-lg">
                 <p

@@ -18,7 +18,7 @@ const protect = async (req, res, next) => {
     if (!token) {
       return res
         .status(401)
-        .json({ message: "Not authenticated. Please log in." });
+        .json({ message: "Not authenticated. Please log in.", code: "SESSION_INVALID" });
     }
 
     // Verify the token signature and expiry
@@ -27,22 +27,22 @@ const protect = async (req, res, next) => {
     // Fetch user and make sure they still exist and are active
     const currentUser = await User.findById(decoded.id);
     if (!currentUser) {
-      return res.status(401).json({ message: "User no longer exists." });
+      return res.status(401).json({ message: "User no longer exists.", code: "SESSION_INVALID" });
     }
     if (!currentUser.isActive) {
-      return res.status(401).json({ message: "Account has been deactivated." });
+      return res.status(401).json({ message: "Account has been deactivated.", code: "SESSION_INVALID" });
     }
 
     req.user = currentUser; // Attach user to request object
     next();
   } catch (err) {
     if (err.name === "JsonWebTokenError") {
-      return res.status(401).json({ message: "Invalid token." });
+      return res.status(401).json({ message: "Invalid token.", code: "SESSION_INVALID" });
     }
     if (err.name === "TokenExpiredError") {
       return res
         .status(401)
-        .json({ message: "Token has expired. Please log in again." });
+        .json({ message: "Token has expired. Please log in again.", code: "SESSION_INVALID" });
     }
     next(err);
   }

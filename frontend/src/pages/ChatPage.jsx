@@ -283,7 +283,7 @@ export default function ChatPage() {
               className="relative overflow-hidden px-4 py-4 flex items-center justify-between"
               style={{ background: 'linear-gradient(155deg, rgb(var(--brand-primary)) 0%, rgb(var(--brand-primary-hover)) 100%)' }}
             >
-              <div className="absolute inset-0 bg-grid-canvas opacity-10 pointer-events-none" />
+              <div className="absolute inset-0 stripes-hero pointer-events-none" />
               <h2 className="font-serif text-lg text-white relative">Messages</h2>
               <button
                 onClick={handleContactSupport}
