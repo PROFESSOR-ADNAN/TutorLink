@@ -18,18 +18,18 @@ const errorHandler = (err, req, res, next) => {
   let error = { ...err, message: err.message };
   error.statusCode = err.statusCode || 500;
 
-  // Third-party SDK errors (Stripe being the current one) carry their OWN
-  // statusCode reflecting THEIR API's response — e.g. a Stripe API key with
-  // insufficient permissions comes back from Stripe as a 401. That's a
+  // Third-party API errors (Chapa, called via axios) carry their OWN
+  // statusCode reflecting THEIR API's response — e.g. an invalid Chapa
+  // secret key comes back as a 401 from Chapa's servers. That's a
   // completely different failure from "this user's session is invalid",
   // but naively reusing err.statusCode above made our server return a 401
   // to the browser regardless, which the frontend (correctly, for a *real*
   // 401) interprets as an expired session and logs the user out — even
   // though their login was never the problem. Third-party status codes
   // must never be trusted as our own auth signal, so we always remap them.
-  const isStripeError = typeof err.type === "string" && err.type.startsWith("Stripe");
-  if (isStripeError) {
-    console.error(`[Stripe error] ${err.type}: ${err.message}`);
+  const isChapaError = err.isAxiosError && err.config?.baseURL?.includes("chapa.co");
+  if (isChapaError) {
+    console.error(`[Chapa error] ${err.response?.status}:`, err.response?.data || err.message);
     error = new AppError(
       "A payment provider error occurred. Please try again in a moment.",
       502,

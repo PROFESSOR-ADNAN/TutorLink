@@ -39,8 +39,6 @@ exports.updateMe = catchAsync(async (req, res, next) => {
 // the time this handler runs — req.file.path is the resulting secure URL,
 // req.file.filename is the public_id we need to delete it later.
 exports.uploadAvatar = catchAsync(async (req, res, next) => {
-  console.log(req.body)
-  console.log(req.file)
   if (!req.file) return next(new AppError("No image file provided", 400));
 
   const user = await User.findById(req.user._id);

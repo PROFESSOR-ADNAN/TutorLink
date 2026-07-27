@@ -31,22 +31,29 @@ const bookingSchema = new mongoose.Schema(
       enum: ['pending', 'confirmed', 'cancelled', 'completed', 'no_show'],
       default: 'pending',
     },
-    // Payment info — linked to Stripe
+    // Payment info — linked to Chapa
     payment: {
-      amount: { type: Number, required: true }, // total charged to student, in cents
-      currency: { type: String, default: 'usd' },
-      stripePaymentIntentId: String,
-      stripeChargeId: String,
+      // Chapa amounts are plain whole numbers (Birr), not cents — there's
+      // no sub-unit the way Stripe uses cents. Do NOT multiply/divide by
+      // 100 anywhere this field is read or written.
+      amount: { type: Number, required: true }, // total charged to student, in ETB
+      currency: { type: String, default: 'ETB' },
+      txRef: String,        // our generated reference, sent to Chapa at checkout
+      chapaRef: String,     // Chapa's own reference (ref_id) for this transaction
+      refundRefId: String,  // Chapa's ref_id for a refund on this transaction, if any
       status: {
         type: String,
         enum: ['unpaid', 'paid', 'refunded'],
         default: 'unpaid',
       },
-      // Commission split (Stripe Connect "destination charge") — set when
-      // the PaymentIntent is created, so we know the breakdown even before
-      // it's paid; confirmed again from the webhook once payment succeeds.
-      platformFeeAmount: { type: Number, default: 0 }, // cents kept by TutorLink
-      tutorPayoutAmount: { type: Number, default: 0 }, // cents transferred to the tutor
+      // Commission split — set when the transaction is initialized (so we
+      // know the intended breakdown even before it's paid), confirmed again
+      // once the webhook/verify call reports success. The actual money
+      // split happens on Chapa's side automatically via the tutor's
+      // subaccount `split_value` — these fields are our own bookkeeping
+      // record of what that split represents, for reporting.
+      platformFeeAmount: { type: Number, default: 0 }, // ETB kept by TutorLink
+      tutorPayoutAmount: { type: Number, default: 0 }, // ETB settled to the tutor's subaccount
       paidAt: Date,
       refundedAt: Date,
     },

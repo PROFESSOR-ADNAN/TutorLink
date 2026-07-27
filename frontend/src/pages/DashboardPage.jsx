@@ -83,7 +83,7 @@ function BookingDetailsModal({ booking, onClose }) {
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Amount</p>
               <p className="text-sm text-ink-900">
-                ${(booking.payment.amount / 100).toFixed(2)}
+                {booking.payment.amount} ETB
                 {booking.payment.status !== 'paid' && <span className="text-ink-400"> · {booking.payment.status}</span>}
               </p>
             </div>
@@ -279,7 +279,7 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
         </div>
 
         <div className="text-sm font-semibold text-ink-900 flex-shrink-0 font-sans">
-          ${(booking.payment.amount / 100).toFixed(2)}
+          {booking.payment.amount} ETB
         </div>
 
         <Badge variant={cfg.variant} className="flex-shrink-0">

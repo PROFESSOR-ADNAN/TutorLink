@@ -103,7 +103,7 @@ function TutorCardStack({ tutors, loading }) {
               <div className="mt-3 pt-3 border-t border-canvas-200 flex items-center justify-between">
                 <span className="text-xs text-ink-400">From</span>
                 <span className="font-sans font-semibold text-ink-900 text-sm">
-                  ${t.hourlyRate}
+                  {t.hourlyRate} ETB
                   <span className="font-normal text-ink-400">/hr</span>
                 </span>
               </div>

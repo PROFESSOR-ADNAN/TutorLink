@@ -57,8 +57,9 @@ app.use("/api/auth", authLimiter);
 // PARSING & LOGGING
 // ──────────────────────────────────────────────────────────
 
-// Parse raw body FIRST for Stripe webhooks (must be before express.json)
-app.use("/api/v1/payments/webhook", express.raw({ type: "application/json" }));
+// Note: Chapa's webhook signs the already-parsed JSON body (not the raw
+// bytes the way Stripe did), so it doesn't need the special raw-body
+// middleware a Stripe webhook would — normal express.json() below is fine.
 
 // Parse JSON bodies (limit 10kb prevents payload-size attacks)
 app.use(express.json({ limit: "10kb" }));

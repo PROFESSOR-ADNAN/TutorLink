@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Elements } from '@stripe/react-stripe-js';
 import { format, addDays } from 'date-fns';
 import api from '../services/api';
 import toast from 'react-hot-toast';
-import { stripePromise } from '../services/stripe';
 import Avatar from '../components/ui/Avatar';
-import CheckoutForm from '../components/CheckoutForm';
+import ChapaCheckout from '../components/ChapaCheckout';
 
 const DURATIONS = [
   { value: 30, label: '30 min' },
@@ -157,7 +155,7 @@ export default function BookingPage() {
           <p className="text-sm text-ink-400">{tutor.subjects.slice(0, 3).join(' · ')}</p>
         </div>
         <div className="ml-auto text-right">
-          <div className="text-xl font-bold text-ink-900">${tutor.hourlyRate}<span className="text-sm font-normal text-ink-400">/hr</span></div>
+          <div className="text-xl font-bold text-ink-900">{tutor.hourlyRate} ETB<span className="text-sm font-normal text-ink-400">/hr</span></div>
         </div>
       </div>
 
@@ -265,11 +263,11 @@ export default function BookingPage() {
             </div>
 
             {/* Price summary */}
-            <div className="bg-forest-50 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-accent/10 rounded-xl p-4 flex items-center justify-between">
               <div className="text-sm text-accent">
                 {form.duration} min · {form.date}{form.time ? ` at ${form.time}` : ' · pick a time above'}
               </div>
-              <div className="text-xl font-display font-bold text-accent">${price.toFixed(2)}</div>
+              <div className="text-xl font-display font-bold text-accent">{price} ETB</div>
             </div>
 
             <button type="submit" disabled={!form.time} className="btn-primary w-full py-3 text-base disabled:opacity-50 disabled:cursor-not-allowed">
@@ -281,19 +279,7 @@ export default function BookingPage() {
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700">
               ✅ Slot reserved for <strong>{form.date} at {form.time}</strong> — complete payment to confirm.
             </div>
-            {stripePromise ? (
-              <Elements stripe={stripePromise}>
-                <CheckoutForm
-                  bookingId={bookingId}
-                  amountCents={bookingAmount}
-                  onSuccess={() => navigate('/dashboard')}
-                />
-              </Elements>
-            ) : (
-              <div className="bg-gold-50 border border-gold-200 rounded-xl p-4 text-sm text-gold-800">
-                Payments aren't configured yet. Set <code>VITE_STRIPE_PUBLIC_KEY</code> to enable checkout.
-              </div>
-            )}
+            <ChapaCheckout bookingId={bookingId} amount={bookingAmount} />
             <p className="text-xs text-ink-400 text-center">
               Your slot is held for 30 minutes — pay before then or finish anytime from your dashboard.
             </p>

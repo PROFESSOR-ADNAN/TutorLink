@@ -111,7 +111,7 @@ const templates = {
   }),
 
   // ─── Session Confirmed ──────────────────────────────────
-  // Sent to BOTH student and tutor after Stripe payment succeeds
+  // Sent to BOTH student and tutor after a Chapa payment succeeds
   // role param controls what each person sees
   sessionConfirmed: ({
     name,

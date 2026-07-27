@@ -123,9 +123,10 @@ export default function ProfilePage() {
   const [tab, setTab] = useState(searchParams.get('tab') === 'payouts' ? 'payouts' : 'personal');
   const [saving, setSaving] = useState(false);
 
-  const [payoutStatus, setPayoutStatus] = useState(null); // { connected, payoutsEnabled }
-  const [loadingPayoutStatus, setLoadingPayoutStatus] = useState(false);
-  const [startingOnboarding, setStartingOnboarding] = useState(false);
+  const [banks, setBanks] = useState([]);
+  const [loadingBanks, setLoadingBanks] = useState(false);
+  const [registeringPayout, setRegisteringPayout] = useState(false);
+  const [payoutForm, setPayoutForm] = useState({ bankCode: '', accountNumber: '', accountName: '' });
 
   const [personal, setPersonal] = useState({
     name: user?.name || '',
@@ -171,28 +172,38 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
 
-  // Load Stripe Connect payout status for tutors. Also re-checks when
-  // landing back here from Stripe's hosted onboarding flow (return_url
-  // includes ?onboarded=1), since Stripe doesn't push completion to us —
-  // we have to ask.
+  // Bank list for the payout-setup dropdown — Chapa has no hosted
+  // onboarding, so the tutor picks their bank here directly.
   useEffect(() => {
     if (user?.role !== 'tutor') return;
-    setLoadingPayoutStatus(true);
+    setLoadingBanks(true);
     api
-      .get('/payments/connect/status')
-      .then(setPayoutStatus)
-      .catch(() => setPayoutStatus({ connected: false, payoutsEnabled: false }))
-      .finally(() => setLoadingPayoutStatus(false));
-  }, [user?.role, searchParams]);
+      .get('/payments/banks')
+      .then((data) => setBanks(data.banks || []))
+      .catch(() => toast.error('Could not load the bank list — try refreshing this page.'))
+      .finally(() => setLoadingBanks(false));
+  }, [user?.role]);
 
-  const handleStartOnboarding = async () => {
-    setStartingOnboarding(true);
+  const handleRegisterPayout = async (e) => {
+    e.preventDefault();
+    if (!payoutForm.bankCode || !payoutForm.accountNumber.trim() || !payoutForm.accountName.trim()) {
+      return toast.error('Please fill in all payout fields');
+    }
+    setRegisteringPayout(true);
     try {
-      const { url } = await api.post('/payments/connect/onboard');
-      window.location.href = url; // Stripe-hosted flow, redirects back to ?tab=payouts&onboarded=1
+      const bank = banks.find((b) => String(b.id) === String(payoutForm.bankCode));
+      const { tutor } = await api.post('/payments/payout-account', {
+        bankCode: payoutForm.bankCode,
+        bankName: bank?.name || '',
+        accountNumber: payoutForm.accountNumber.trim(),
+        accountName: payoutForm.accountName.trim(),
+      });
+      setTutorMeta((m) => ({ ...m, payoutsEnabled: tutor.payoutsEnabled, payoutAccount: tutor.payoutAccount }));
+      toast.success('Payout account saved — you can now be booked and paid');
     } catch (err) {
-      toast.error(err.message || 'Could not start payout setup');
-      setStartingOnboarding(false);
+      toast.error(err.message || 'Could not save your payout account');
+    } finally {
+      setRegisteringPayout(false);
     }
   };
 
@@ -262,6 +273,8 @@ export default function ProfilePage() {
           averageRating: t.averageRating || 0,
           totalSessions: t.totalSessions || 0,
           isApproved: t.isApproved,
+          payoutsEnabled: t.payoutsEnabled,
+          payoutAccount: t.payoutAccount,
         });
         setHasTutorProfile(true);
       })
@@ -287,7 +300,7 @@ export default function ProfilePage() {
   const saveTutorProfile = async (e) => {
     e.preventDefault();
     if (tutorProfile.subjects.length === 0) return toast.error('Select at least one subject');
-    if (!tutorProfile.hourlyRate || tutorProfile.hourlyRate < 1) return toast.error('Hourly rate must be at least $1');
+    if (!tutorProfile.hourlyRate || tutorProfile.hourlyRate < 1) return toast.error('Hourly rate must be at least 1 ETB');
 
     for (const day of DAYS) {
       const ranges = tutorProfile.availability
@@ -572,7 +585,7 @@ export default function ProfilePage() {
                       <EntryRow
                         icon="🎓"
                         title="Tutor · TutorLink"
-                        subtitle={`$${tutorProfile.hourlyRate}/hr · ${tutorProfile.experience} ${tutorProfile.experience === 1 ? 'year' : 'years'} of experience`}
+                        subtitle={`${tutorProfile.hourlyRate} ETB/hr · ${tutorProfile.experience} ${tutorProfile.experience === 1 ? 'year' : 'years'} of experience`}
                       >
                         {tutorProfile.teachingStyle && (
                           <p className="text-sm text-ink-600 mt-2 leading-relaxed">{tutorProfile.teachingStyle}</p>
@@ -680,7 +693,7 @@ export default function ProfilePage() {
                     key={key}
                     onClick={() => setTab(key)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-left transition-all duration-150 ${
-                      tab === key ? 'bg-forest-50 text-accent' : 'text-ink-600 hover:bg-canvas-100'
+                      tab === key ? 'bg-accent/10 text-accent' : 'text-ink-600 hover:bg-canvas-100'
                     }`}
                   >
                     <span className="text-base">{icon}</span>
@@ -784,11 +797,11 @@ export default function ProfilePage() {
                           <input type="number" min={0} max={50} className="input" value={tutorProfile.experience}
                             onChange={(e) => setTutorProfile({ ...tutorProfile, experience: Number(e.target.value) })} />
                         </FormField>
-                        <FormField label="Hourly rate (USD)" required>
+                        <FormField label="Hourly rate (ETB)" required>
                           <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400 text-sm">$</span>
-                            <input type="number" min={1} className="input pl-7" value={tutorProfile.hourlyRate}
+                            <input type="number" min={1} className="input pr-14" value={tutorProfile.hourlyRate}
                               onChange={(e) => setTutorProfile({ ...tutorProfile, hourlyRate: Number(e.target.value) })} />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 text-sm">ETB</span>
                           </div>
                         </FormField>
                       </div>
@@ -877,30 +890,20 @@ export default function ProfilePage() {
                   <div>
                     <h2 className="font-sans font-semibold text-ink-900 text-base mb-1">Payouts</h2>
                     <p className="text-sm text-ink-400">
-                      TutorLink uses Stripe to pay you directly after each session. You need to finish this
-                      one-time setup before students can book and pay you.
+                      TutorLink uses Chapa to pay you directly after each session. Enter your bank details
+                      once — students can't book you until this is set up.
                     </p>
                   </div>
 
-                  {loadingPayoutStatus ? (
-                    <Skeleton className="h-16 w-full" />
-                  ) : payoutStatus?.payoutsEnabled ? (
+                  {tutorMeta?.payoutsEnabled ? (
                     <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                       <span className="text-lg">✅</span>
                       <div>
                         <p className="text-sm font-medium text-emerald-800">Payouts are active</p>
                         <p className="text-xs text-emerald-700 mt-0.5">
-                          Stripe automatically sends your share to your bank account after each paid session.
-                        </p>
-                      </div>
-                    </div>
-                  ) : payoutStatus?.connected ? (
-                    <div className="flex items-start gap-3 bg-gold-50 border border-gold-200 rounded-xl p-4">
-                      <span className="text-lg">⏳</span>
-                      <div>
-                        <p className="text-sm font-medium text-gold-800">Setup started, not finished yet</p>
-                        <p className="text-xs text-gold-700 mt-0.5">
-                          Stripe still needs a bit more information from you before payouts can turn on.
+                          Paying out to {tutorMeta.payoutAccount?.bankName} account ending in{' '}
+                          {tutorMeta.payoutAccount?.accountNumber?.slice(-4)}. Chapa automatically sends
+                          your share after each paid session.
                         </p>
                       </div>
                     </div>
@@ -910,19 +913,42 @@ export default function ProfilePage() {
                       <div>
                         <p className="text-sm font-medium text-ink-900">Payouts aren't set up yet</p>
                         <p className="text-xs text-ink-500 mt-0.5">
-                          You won't be bookable until this is complete — it only takes a few minutes.
+                          You won't be bookable until this is complete — it only takes a minute.
                         </p>
                       </div>
                     </div>
                   )}
 
-                  <Button onClick={handleStartOnboarding} loading={startingOnboarding}>
-                    {payoutStatus?.connected ? 'Continue payout setup' : 'Set up payouts'}
-                  </Button>
+                  <form onSubmit={handleRegisterPayout} className="space-y-4">
+                    <FormField label="Bank" required>
+                      <select
+                        className="input"
+                        value={payoutForm.bankCode}
+                        onChange={(e) => setPayoutForm({ ...payoutForm, bankCode: e.target.value })}
+                        disabled={loadingBanks}
+                      >
+                        <option value="">{loadingBanks ? 'Loading banks…' : 'Select your bank'}</option>
+                        {banks.map((b) => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    </FormField>
+                    <FormField label="Account number" required>
+                      <input className="input" value={payoutForm.accountNumber}
+                        onChange={(e) => setPayoutForm({ ...payoutForm, accountNumber: e.target.value })} />
+                    </FormField>
+                    <FormField label="Account holder name" required hint="Must match the name on the bank account exactly">
+                      <input className="input" value={payoutForm.accountName}
+                        onChange={(e) => setPayoutForm({ ...payoutForm, accountName: e.target.value })} />
+                    </FormField>
+                    <Button type="submit" loading={registeringPayout}>
+                      {tutorMeta?.payoutsEnabled ? 'Update payout account' : 'Save payout account'}
+                    </Button>
+                  </form>
 
                   <p className="text-xs text-ink-400 pt-2 border-t border-canvas-200">
-                    TutorLink keeps a platform commission on each paid session; the rest is transferred to you
-                    automatically — no manual invoicing required.
+                    TutorLink keeps a platform commission on each paid session; the rest is sent to this
+                    account automatically — no manual invoicing required.
                   </p>
                 </Card>
               )}

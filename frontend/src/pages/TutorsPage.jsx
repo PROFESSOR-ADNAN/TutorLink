@@ -44,7 +44,7 @@ function TutorCard({ tutor }) {
             </div>
           </div>
           <div className="text-right flex-shrink-0">
-            <div className="font-serif text-xl text-ink-900" style={{ letterSpacing: '-0.02em' }}>${tutor.hourlyRate}</div>
+            <div className="font-serif text-xl text-ink-900" style={{ letterSpacing: '-0.02em' }}>{tutor.hourlyRate} ETB</div>
             <div className="text-xs text-ink-400">/hr</div>
           </div>
         </div>
@@ -188,7 +188,7 @@ export default function TutorsPage() {
                 onClick={() => setFilters({ ...filters, subject: filters.subject === s ? '' : s })}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
                   filters.subject === s
-                    ? 'bg-white text-ink-900'
+                    ? 'bg-white text-neutral-900'
                     : 'surface-brand-glass text-white'
                 }`}
               >
@@ -229,7 +229,7 @@ export default function TutorsPage() {
                     {[['', 'Any'], ['3', '3+ ★'], ['4', '4+ ★'], ['4.5', '4.5+ ★']].map(([val, label]) => (
                       <button key={val} onClick={() => setFilters({ ...filters, minRating: val })}
                         className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all ${
-                          filters.minRating === val ? 'bg-forest-50 text-accent font-medium' : 'text-ink-600'
+                          filters.minRating === val ? 'bg-accent/10 text-accent font-medium' : 'text-ink-600'
                         }`}>
                         <span className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${filters.minRating === val ? 'border-forest-800 bg-forest-800' : 'border-canvas-400'}`} />
                         {label}

@@ -51,7 +51,7 @@ function OverviewTab() {
         <StatCard label="Total users" value={s.totalUsers} hint={`${s.activeUsers} active`} />
         <StatCard label="Students" value={s.totalStudents} />
         <StatCard label="Tutors" value={s.totalTutors} hint={s.pendingApprovals > 0 ? `${s.pendingApprovals} pending` : 'all approved'} />
-        <StatCard label="Revenue" value={`$${(s.totalRevenue / 100).toFixed(2)}`} hint="paid bookings" />
+        <StatCard label="Revenue" value={`${s.totalRevenue} ETB`} hint="paid bookings" />
         <StatCard label="Total bookings" value={s.totalBookings} />
         <StatCard label="Completed sessions" value={s.completedSessions} />
         <StatCard label="Cancelled" value={s.cancelledBookings} />
@@ -79,11 +79,11 @@ function EarningsTab() {
   const { totals, statusBreakdown: sb, daily, monthly, byTutor, commissionRate } = data;
   const chartData = (range === 'daily' ? daily : monthly).map((d) => ({
     label: range === 'daily' ? format(new Date(d._id), 'MMM d') : format(new Date(`${d._id}-01`), 'MMM yyyy'),
-    'Platform commission': +(d.platformFees / 100).toFixed(2),
-    'Gross revenue': +(d.grossRevenue / 100).toFixed(2),
+    'Platform commission': d.platformFees,
+    'Gross revenue': d.grossRevenue,
   }));
 
-  const money = (cents) => `$${(cents / 100).toFixed(2)}`;
+  const money = (etb) => `${etb} ETB`;
 
   return (
     <div className="space-y-6">
@@ -164,7 +164,7 @@ function EarningsTab() {
               <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'rgb(var(--ink-400))' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'rgb(var(--ink-400))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
               <Tooltip
-                formatter={(v) => `$${v.toFixed(2)}`}
+                formatter={(v) => `${v} ETB`}
                 contentStyle={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--canvas-300))', borderRadius: 8, fontSize: 12 }}
               />
               <Area type="monotone" dataKey="Gross revenue" stroke="#2d6652" fill="url(#grossFill)" strokeWidth={2} />
@@ -266,7 +266,7 @@ function ApprovalsTab() {
               ))}
             </div>
             <div className="text-xs text-ink-500 mt-2">
-              {t.educationLevel}{t.university ? ` · ${t.university}` : ''} · ${t.hourlyRate}/hr · {t.experience} yrs experience
+              {t.educationLevel}{t.university ? ` · ${t.university}` : ''} · {t.hourlyRate} ETB/hr · {t.experience} yrs experience
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -294,7 +294,7 @@ function CancellationsTab() {
       await api.patch(`/admin/cancellation-requests/${booking._id}`, { decision, adminNote: noteDrafts[booking._id] || '' });
       toast.success(
         decision === 'approve'
-          ? `Approved — session cancelled, $${(booking.payment.amount / 100).toFixed(2)} refunded to ${booking.student?.name}`
+          ? `Approved — session cancelled, ${booking.payment.amount} ETB refunded to ${booking.student?.name}`
           : 'Request denied — session stays as scheduled'
       );
       refetch();
@@ -328,8 +328,8 @@ function CancellationsTab() {
                 {otherParty?.name}
               </div>
               <div className="text-xs text-ink-400 mt-0.5">
-                {b.subject} · {format(new Date(b.scheduledAt), 'MMM d, yyyy · h:mm a')} · ${(b.payment.amount / 100).toFixed(2)} paid
-                <span className="text-accent"> — will refund the full ${(b.payment.amount / 100).toFixed(2)} to {b.student?.name} if approved</span>
+                {b.subject} · {format(new Date(b.scheduledAt), 'MMM d, yyyy · h:mm a')} · {b.payment.amount} ETB paid
+                <span className="text-accent"> — will refund the full {b.payment.amount} ETB to {b.student?.name} if approved</span>
               </div>
               <div className="bg-canvas-100 border border-canvas-300 rounded-lg p-3 mt-2 text-sm text-ink-700">
                 "{b.cancellationRequest.reason}"
@@ -464,7 +464,7 @@ function BookingsTab() {
                 <td className="px-4 py-3 text-ink-900">{b.tutor?.user?.name}</td>
                 <td className="px-4 py-3 text-ink-600">{b.subject}</td>
                 <td className="px-4 py-3 text-ink-600">{format(new Date(b.scheduledAt), 'MMM d, yyyy')}</td>
-                <td className="px-4 py-3 text-ink-900 font-medium">${(b.payment.amount / 100).toFixed(2)}</td>
+                <td className="px-4 py-3 text-ink-900 font-medium">{b.payment.amount} ETB</td>
                 <td className="px-4 py-3">
                   <Badge variant={
                     b.status === 'completed' ? 'success' :

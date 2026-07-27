@@ -100,7 +100,7 @@ export default function SettingsPage() {
               onClick={() => handleThemeChange(value)}
               className={`flex flex-col items-center gap-1.5 py-3.5 rounded-xl border text-sm font-medium transition-all ${
                 mode === value
-                  ? 'border-forest-800 bg-forest-50 text-accent'
+                  ? 'border-accent bg-accent/10 text-accent'
                   : 'border-canvas-300 text-ink-600 hover:border-canvas-400'
               }`}
             >

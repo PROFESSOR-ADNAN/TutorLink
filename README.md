@@ -21,7 +21,7 @@ POST /api/bookings
 
 ## Why This Exists
 
-Finding a reliable tutor is hard. Existing platforms are expensive, opaque, or require long sign-up processes. TutorLink is built to be fast, transparent, and student-first — from a clean search experience to a one-click booking flow with integrated Stripe payments.
+Finding a reliable tutor is hard. Existing platforms are expensive, opaque, or require long sign-up processes. TutorLink is built to be fast, transparent, and student-first — from a clean search experience to a one-click booking flow with integrated Chapa payments.
 
 ---
 
@@ -31,10 +31,10 @@ Finding a reliable tutor is hard. Existing platforms are expensive, opaque, or r
 |---|---|
 | 🔐 Auth | JWT + HTTP-only cookies, email verification, password reset |
 | 🔍 Tutor Search | Filter by subject, rating, price, language, availability |
-| 📅 Booking | Pick a time slot, pay via Stripe, auto-confirm on payment |
+| 📅 Booking | Pick a time slot, pay via Chapa, auto-confirm on payment |
 | 💬 Real-time Chat | Socket.IO with typing indicators, read receipts, message history |
 | ⭐ Reviews | Students review tutors after completed sessions, auto-updates rating |
-| 💳 Payments | Stripe Payment Intents, webhook-driven confirmation |
+| 💳 Payments | Chapa transactions + subaccount split payments, webhook-driven confirmation |
 | 🛡️ Security | Helmet, rate limiting, NoSQL injection sanitization, CORS |
 
 ---
@@ -47,7 +47,7 @@ Finding a reliable tutor is hard. Existing platforms are expensive, opaque, or r
 | **Backend** | Node.js 20, Express 4, Socket.IO |
 | **Database** | MongoDB 7 with Mongoose |
 | **Auth** | JWT (jsonwebtoken), bcryptjs, HTTP-only cookies |
-| **Payments** | Stripe Payment Intents + Webhooks |
+| **Payments** | Chapa (transactions, subaccounts, webhooks) |
 | **Real-time** | Socket.IO (chat + typing indicators) |
 | **File Uploads** | Cloudinary |
 | **Email** | Nodemailer (SMTP) |
@@ -70,7 +70,7 @@ tutorlink/
 │   │   │   ├── tutor.controller.js   # Tutor profiles + search
 │   │   │   ├── booking.controller.js # Session CRUD
 │   │   │   ├── chat.controller.js    # Message history
-│   │   │   └── payment.controller.js # Stripe intents + webhooks
+│   │   │   └── payment.controller.js # Chapa transactions + webhooks
 │   │   ├── middleware/
 │   │   │   ├── auth.middleware.js    # protect() + restrictTo()
 │   │   │   └── error.middleware.js   # Global error handler
@@ -103,7 +103,7 @@ tutorlink/
 │   │   │   ├── HomePage.jsx       # Hero, search, how it works
 │   │   │   ├── TutorsPage.jsx     # Filterable browse grid
 │   │   │   ├── TutorProfilePage.jsx
-│   │   │   ├── BookingPage.jsx    # 2-step: slot picker → Stripe
+│   │   │   ├── BookingPage.jsx    # 2-step: slot picker → Chapa checkout
 │   │   │   ├── DashboardPage.jsx  # Sessions for students & tutors
 │   │   │   ├── ChatPage.jsx       # Real-time messaging
 │   │   │   ├── ProfilePage.jsx    # Edit personal info + password
@@ -151,8 +151,8 @@ Edit `backend/.env` and fill in at minimum:
 ```env
 MONGO_URI=mongodb://root:rootpassword@mongo:27017/tutorlink?authSource=admin
 JWT_SECRET=<run: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))">
-STRIPE_SECRET_KEY=sk_test_...        # from dashboard.stripe.com
-STRIPE_WEBHOOK_SECRET=whsec_...
+CHAPA_SECRET_KEY=...                 # from your Chapa dashboard > Settings > API Keys
+CHAPA_WEBHOOK_SECRET=...             # a secret YOU choose, registered in Chapa's webhook settings
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
@@ -163,7 +163,7 @@ Edit `frontend/.env`:
 
 ```env
 VITE_API_URL=http://localhost:5000/api
-VITE_STRIPE_PUBLIC_KEY=pk_test_...
+# (no frontend payment key needed — Chapa checkout is a backend-driven redirect)
 ```
 
 ### 2. Start everything
@@ -239,8 +239,9 @@ curl http://localhost:5000/api/tutors?subject=Mathematics
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| POST | `/api/payments/create-payment-intent/:bookingId` | ✅ | Get Stripe client secret |
-| POST | `/api/payments/webhook` | Stripe sig | Stripe payment events |
+| POST | `/api/payments/initialize/:bookingId` | ✅ | Get Chapa checkout URL |
+| GET  | `/api/payments/verify/:bookingId` | ✅ | Manually re-check payment status |
+| POST | `/api/payments/webhook` | Chapa sig | Chapa payment events |
 
 ---
 
@@ -302,7 +303,7 @@ Your users get the files from the server nearest to them → fast loads worldwid
 5. Under **Environment Variables**, add:
    ```
    VITE_API_URL        = https://tutorlink-api.up.railway.app/api
-   VITE_STRIPE_PUBLIC_KEY = pk_live_...
+   (no frontend payment key needed for Chapa)
    ```
 6. Click **Deploy** — done. You get a URL like `https://tutorlink.vercel.app`
 
@@ -324,7 +325,7 @@ vercel
 
 # Set env variables:
 vercel env add VITE_API_URL
-vercel env add VITE_STRIPE_PUBLIC_KEY
+# (no frontend payment env var needed for Chapa)
 
 # Deploy to production:
 vercel --prod
@@ -344,13 +345,13 @@ This tells the backend to accept requests from your live frontend.
 
 ---
 
-### Step 4 — Set up Stripe Webhook for production
+### Step 4 — Set up Chapa Webhook for production
 
 1. Go to [dashboard.stripe.com/webhooks](https://dashboard.stripe.com/webhooks)
 2. Click **Add endpoint**
 3. URL: `https://tutorlink-api.up.railway.app/api/payments/webhook`
 4. Events to listen for: `payment_intent.succeeded`, `payment_intent.payment_failed`
-5. Copy the **Signing Secret** → add it to Railway as `STRIPE_WEBHOOK_SECRET`
+5. Set your own webhook secret in Chapa's dashboard → add the same value to Railway as `CHAPA_WEBHOOK_SECRET`
 
 ---
 
@@ -368,7 +369,7 @@ No manual steps needed. Pull request previews also get their own URLs.
 
 - [x] Phase 1 — Auth (register, login, JWT, email verify, password reset)
 - [x] Phase 2 — Tutor profiles with search and filtering
-- [x] Phase 3 — Booking system with Stripe payments
+- [x] Phase 3 — Booking system with Chapa payments
 - [x] Phase 4 — Real-time chat with Socket.IO
 - [x] Phase 5 — Reviews with auto-calculated ratings
 - [ ] Phase 6 — Video sessions (Daily.co or Jitsi integration)

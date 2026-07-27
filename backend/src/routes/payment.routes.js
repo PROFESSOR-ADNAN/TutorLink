@@ -1,19 +1,24 @@
 const router = require("express").Router();
 const {
-  createPaymentIntent,
-  stripeWebhook,
-  createConnectOnboardingLink,
-  getConnectStatus,
+  initializePayment,
+  verifyPayment,
+  chapaWebhook,
+  getBanks,
+  registerPayoutAccount,
 } = require("../controllers/payment.controller");
 const { protect, restrictTo } = require("../middleware/auth.middleware");
 
-// Stripe webhook must receive RAW body — handled in app.js before json() middleware
-router.post("/webhook", stripeWebhook);
+// Chapa signs the already-parsed JSON body (not the raw bytes, unlike
+// Stripe), so this can just be a normal route behind express.json() —
+// no special raw-body handling needed in app.js for this one.
+router.post("/webhook", chapaWebhook);
 
-router.post("/create-payment-intent/:bookingId", protect, createPaymentIntent);
+router.get("/banks", protect, getBanks);
 
-// Tutor payout setup (Stripe Connect Express onboarding)
-router.post("/connect/onboard", protect, restrictTo("tutor"), createConnectOnboardingLink);
-router.get("/connect/status", protect, restrictTo("tutor"), getConnectStatus);
+router.post("/initialize/:bookingId", protect, initializePayment);
+router.get("/verify/:bookingId", protect, verifyPayment);
+
+// Tutor payout setup — registering a Chapa subaccount with real bank details
+router.post("/payout-account", protect, restrictTo("tutor"), registerPayoutAccount);
 
 module.exports = router;

@@ -41,7 +41,7 @@ exports.getStats = catchAsync(async (req, res, next) => {
       totalBookings,
       completedSessions,
       cancelledBookings,
-      totalRevenue: revenueAgg[0]?.total || 0, // cents
+      totalRevenue: revenueAgg[0]?.total || 0, // ETB (whole numbers, no cents)
     },
   });
 });
@@ -124,7 +124,7 @@ exports.getEarnings = catchAsync(async (req, res, next) => {
     // Overall totals across every paid booking, regardless of whether the
     // session itself has since happened (status: 'completed') or is still
     // upcoming (status: 'confirmed') — payment settles at booking time via
-    // Stripe Connect, not at session-completion time.
+    // Chapa settlement, not at session-completion time.
     Booking.aggregate([
       { $match: paidMatch },
       {

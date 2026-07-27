@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Elements } from '@stripe/react-stripe-js';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 import api from '../services/api';
-import { stripePromise } from '../services/stripe';
 import Avatar from '../components/ui/Avatar';
-import CheckoutForm from '../components/CheckoutForm';
+import ChapaCheckout from '../components/ChapaCheckout';
 import ErrorState from '../components/ui/ErrorState';
 
 export default function PaymentPage() {
   const { bookingId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState(null);
 
   const load = () => {
@@ -30,11 +31,36 @@ export default function PaymentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId]);
 
-  if (loading) {
+  // Chapa redirects the student back here with ?status=return after
+  // checkout — the webhook may not have arrived yet (or, in local dev,
+  // may not be reachable at all without the Chapa CLI/tunnel running), so
+  // we proactively ask "did this actually succeed?" via the same verify
+  // endpoint the webhook itself uses, rather than just hoping.
+  useEffect(() => {
+    if (searchParams.get('status') !== 'return' || !booking || booking.payment.status === 'paid') return;
+
+    setVerifying(true);
+    api
+      .get(`/payments/verify/${bookingId}`)
+      .then((data) => {
+        if (data.status === 'paid') {
+          toast.success('Payment confirmed! Booking confirmed 🎉');
+          navigate('/dashboard');
+        } else {
+          toast.error("We didn't receive confirmation that this payment went through — you can try again below.");
+        }
+      })
+      .catch(() => toast.error('Could not verify payment status — you can try again below.'))
+      .finally(() => setVerifying(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking?._id, searchParams]);
+
+  if (loading || verifying) {
     return (
       <div className="max-w-lg mx-auto px-4 py-10 animate-pulse space-y-4">
         <div className="h-24 bg-canvas-300 rounded-2xl" />
         <div className="h-64 bg-canvas-300 rounded-2xl" />
+        {verifying && <p className="text-center text-sm text-ink-400">Checking your payment status…</p>}
       </div>
     );
   }
@@ -95,18 +121,8 @@ export default function PaymentPage() {
             </p>
             <Link to={`/book/${booking.tutor._id}`} className="btn-primary">Book a new time</Link>
           </div>
-        ) : stripePromise ? (
-          <Elements stripe={stripePromise}>
-            <CheckoutForm
-              bookingId={booking._id}
-              amountCents={booking.payment.amount}
-              onSuccess={() => navigate('/dashboard')}
-            />
-          </Elements>
         ) : (
-          <div className="bg-gold-50 border border-gold-200 rounded-xl p-4 text-sm text-gold-800">
-            Payments aren't configured yet. Set <code>VITE_STRIPE_PUBLIC_KEY</code> to enable checkout.
-          </div>
+          <ChapaCheckout bookingId={booking._id} amount={booking.payment.amount} />
         )}
       </div>
     </div>

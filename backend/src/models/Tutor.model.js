@@ -84,15 +84,22 @@ const tutorSchema = new mongoose.Schema(
         uploadedAt: { type: Date, default: Date.now },
       },
     ],
-    // ─── Stripe Connect (payouts) ───────────────────────────
-    // A tutor must complete Connect onboarding before they can be booked —
-    // this is how we're able to split payment automatically at charge time
-    // (platform commission vs. tutor payout) instead of holding funds
-    // ourselves and manually paying tutors out later.
-    stripeAccountId: String,
+    // ─── Chapa payouts (split payments via subaccount) ──────
+    // Unlike Stripe Connect, Chapa has no hosted onboarding flow — the
+    // tutor gives us their real bank account details directly, and we
+    // register them as a Chapa "subaccount" via the API. Chapa then splits
+    // each payment automatically at settlement time between our platform
+    // and this subaccount, based on chapaSplitType/chapaSplitValue.
+    chapaSubaccountId: String,
+    payoutAccount: {
+      bankCode: Number,     // Chapa's numeric bank ID, from GET /v1/banks
+      bankName: String,     // display only, e.g. "Commercial Bank of Ethiopia"
+      accountNumber: String,
+      accountName: String,  // must match the name on the bank account
+    },
     payoutsEnabled: {
       type: Boolean,
-      default: false, // flipped true once Stripe confirms onboarding is complete
+      default: false, // flipped true once the Chapa subaccount is created
     },
   },
   {

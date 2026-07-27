@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const chapa = require("../config/chapa");
 const Booking = require("../models/Booking.model");
 const Tutor = require("../models/Tutor.model");
 const { AppError } = require("../middleware/error.middleware");
@@ -15,19 +15,34 @@ const PENDING_HOLD_MINUTES = 30;
 // once — stops someone from mass-reserving slots "just in case".
 const MAX_OPEN_PENDING_BOOKINGS = 3;
 
-// Reverses a Stripe destination charge: pulls the tutor's share back from
-// their connected account (reverse_transfer) and returns TutorLink's
-// commission too (refund_application_fee), so nobody keeps money on a
-// session that didn't happen. Safe to call on an unpaid booking (no-op).
-async function refundBooking(booking) {
+// Refunds via Chapa's /refund/:tx_ref endpoint. Safe to call on an unpaid
+// booking (no-op).
+//
+// IMPORTANT — read before relying on this in production: unlike Stripe
+// Connect's `reverse_transfer` (which automatically pulled the tutor's
+// share back out of their connected account), Chapa's refund docs only
+// describe deducting the refunded amount from *your own* Chapa balance.
+// There is no documented mechanism here that automatically claws back
+// money from a tutor's subaccount if it has already been settled to them.
+// In practice this means: a refund issued *before* Chapa settles the
+// tutor's split is fine, but a refund issued *after* settlement leaves the
+// tutor holding their share while your own balance absorbs the full
+// refund. Until this is reconciled with Chapa support/docs for your
+// account's settlement timing, treat "refund after settlement" as a
+// manual follow-up (contact the tutor, adjust a future payout, etc.)
+// rather than something this function fully resolves on its own.
+async function refundBooking(booking, reason = "Booking cancelled") {
   if (booking.payment.status !== "paid") return;
-  await stripe.refunds.create({
-    payment_intent: booking.payment.stripePaymentIntentId,
-    reverse_transfer: true,
-    refund_application_fee: true,
-  });
+
+  const { data } = await chapa.post(
+    `/refund/${booking.payment.txRef}`,
+    new URLSearchParams({ reason, reference: `refund-${booking._id}` }),
+    { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+  );
+
   booking.payment.status = "refunded";
   booking.payment.refundedAt = new Date();
+  booking.payment.refundRefId = data?.data?.ref_id;
 }
 
 // ─── Create a new booking ─────────────────────────────────
@@ -120,9 +135,9 @@ exports.createBooking = catchAsync(async (req, res, next) => {
     return next(new AppError("This time slot is already booked", 409));
   }
 
-  // Calculate price in cents for Stripe
+  // Chapa amounts are plain whole numbers (ETB) — no cents/sub-unit like Stripe.
   const hours = duration / 60;
-  const amount = Math.round(tutor.hourlyRate * hours * 100);
+  const amount = Math.round(tutor.hourlyRate * hours);
 
   const booking = await Booking.create({
     student: req.user._id,
@@ -131,7 +146,7 @@ exports.createBooking = catchAsync(async (req, res, next) => {
     scheduledAt,
     duration,
     studentNotes,
-    payment: { amount, currency: "usd" },
+    payment: { amount, currency: "ETB" },
     expiresAt: new Date(Date.now() + PENDING_HOLD_MINUTES * 60 * 1000),
   });
 
@@ -246,7 +261,7 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
     return next(new AppError("Not authorized to update this booking", 403));
   }
 
-  // Confirmed is now handled automatically by the Stripe webhook
+  // Confirmed is now handled automatically by the Chapa webhook
   // after payment succeeds — no one can manually set it
   if (status === "confirmed") {
     return next(
@@ -302,7 +317,7 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
     // reaches here with anything to refund in the first place.
     if (isAdmin) {
       try {
-        await refundBooking(booking);
+        await refundBooking(booking, booking.cancelReason || "Booking cancelled by admin");
       } catch (err) {
         return next(new AppError(`Cancelled, but the refund failed: ${err.message}`, 500));
       }
@@ -404,7 +419,7 @@ exports.resolveCancellationRequest = catchAsync(async (req, res, next) => {
     booking.cancelledBy = booking.cancellationRequest.requestedBy || "admin";
     booking.cancelReason = booking.cancellationRequest.reason;
     try {
-      await refundBooking(booking);
+      await refundBooking(booking, booking.cancellationRequest.reason);
     } catch (err) {
       return next(new AppError(`Approved, but the refund failed: ${err.message}`, 500));
     }

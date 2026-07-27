@@ -82,7 +82,7 @@ export default function TutorProfilePage() {
             <div className="w-full sm:w-auto">
               <div className="card p-5 min-w-[200px] shadow-modal">
                 <div className="flex items-baseline gap-1 mb-4">
-                  <span className="font-serif text-3xl text-ink-900">${tutor.hourlyRate}</span>
+                  <span className="font-serif text-3xl text-ink-900">{tutor.hourlyRate} ETB</span>
                   <span className="text-sm text-ink-400">/hr</span>
                 </div>
                 {isAuthenticated && user?.role === 'student' ? (

@@ -10,7 +10,7 @@ const {
 const { protect, restrictTo } = require("../middleware/auth.middleware");
 
 // Caps how many booking *creation attempts* one person can make in a short
-// window — protects tutors' calendars and Stripe from being hammered by a
+// window — protects tutors' calendars and the payment provider from being hammered by a
 // script or an accidental double-submit loop. This is about request
 // volume, not a judgment on the person's history — legitimate rebooking
 // after a genuine cancellation is never penalized (see the removed
