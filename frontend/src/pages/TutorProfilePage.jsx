@@ -4,6 +4,7 @@ import api from '../services/api';
 import useAuthStore from '../context/authStore';
 import Avatar from '../components/ui/Avatar';
 import GradientHero from '../components/ui/GradientHero';
+import { toEthiopianTime } from '../utils/ethiopianTime';
 
 function Stars({ rating }) {
   return (
@@ -187,7 +188,7 @@ export default function TutorProfilePage() {
                     <span className="text-ink-400 text-right">
                       {tutor.availability
                         .filter((s) => s.day === day)
-                        .map((s) => `${s.startTime}–${s.endTime}`)
+                        .map((s) => `${toEthiopianTime(s.startTime)}–${toEthiopianTime(s.endTime)}`)
                         .join(', ')}
                     </span>
                   </div>

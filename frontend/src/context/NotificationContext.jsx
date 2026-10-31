@@ -46,12 +46,13 @@ export function NotificationProvider({ children }) {
   }, []);
 
   // Called the moment a conversation is opened — decrements the badge
-  // immediately (optimistic, Telegram-style) rather than waiting on a
-  // network round trip, then reconciles with the server shortly after.
+  // immediately (Telegram-style). This is safe to trust without a
+  // follow-up refetch: by the time this runs, the backend's mark-as-read
+  // has already completed (loadMessages awaited it), so the count we're
+  // removing is exactly what the server now agrees is read.
   const markConversationRead = useCallback((otherUserId) => {
     setUnreadConversations((prev) => prev.filter((c) => c.otherUser?._id !== otherUserId));
-    setTimeout(refreshUnread, 300);
-  }, [refreshUnread]);
+  }, []);
 
   const totalUnread = unreadConversations.reduce((sum, c) => sum + c.unreadCount, 0);
 

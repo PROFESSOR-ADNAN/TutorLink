@@ -17,7 +17,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-serif text-xl text-ink-900 mb-2">3. Bookings and payments</h2>
-          <p>Students book paid sessions with tutors through the platform. Payments are processed securely by Stripe. Cancellation and refund terms are shown at the time of booking. TutorLink is a marketplace connecting students and tutors — it is not a party to the tutoring arrangement itself.</p>
+          <p>Students book paid sessions with tutors through the platform. Payments are processed securely by Chapa. Cancellation and refund terms are shown at the time of booking. TutorLink is a marketplace connecting students and tutors — it is not a party to the tutoring arrangement itself.</p>
         </section>
 
         <section>

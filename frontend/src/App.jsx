@@ -22,6 +22,8 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 import ContactPage from './pages/ContactPage';
+import BecomeTutorGuidePage from './pages/BecomeTutorGuidePage';
+import StudentGuidePage from './pages/StudentGuidePage';
 import PrivacyPage from './pages/PrivacyPage';
 import TermsPage from './pages/TermsPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -130,6 +132,8 @@ export default function App() {
               }
             />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/become-a-tutor" element={<BecomeTutorGuidePage />} />
+            <Route path="/for-students" element={<StudentGuidePage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
 

@@ -251,6 +251,86 @@ const templates = {
       </div>
     `,
   }),
+
+  // ─── Tutor application approved ───────────────────────────
+  tutorApproved: ({ name }) => ({
+    subject: "You're approved — welcome to TutorLink!",
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+        <div style="background:#1B4332;padding:24px;border-radius:12px 12px 0 0">
+          <h1 style="color:#fff;margin:0;font-size:22px">TutorLink</h1>
+        </div>
+        <div style="background:#fff;padding:32px;border:1px solid #EAEAE3;border-top:none;border-radius:0 0 12px 12px">
+          <h2 style="color:#141410;margin-top:0">You're approved! 🎉</h2>
+          <p style="color:#4A4A42">Hi <strong>${name}</strong>,</p>
+          <p style="color:#4A4A42">
+            Good news — your tutor application has been reviewed and approved. Your profile is
+            now live and searchable, and students can start booking sessions with you right away.
+          </p>
+          <div style="text-align:center;margin:28px 0">
+            <a href="${process.env.CLIENT_URL}/profile"
+              style="background:#1B4332;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
+              View your profile
+            </a>
+          </div>
+          <p style="color:#4A4A42">
+            A couple of quick tips to get your first booking: make sure your weekly availability
+            is up to date, and a complete, friendly bio goes a long way with students browsing tutors.
+          </p>
+        </div>
+        <p style="text-align:center;color:#8C8C82;font-size:12px;margin-top:16px">
+          © ${new Date().getFullYear()} TutorLink. All rights reserved.
+        </p>
+      </div>
+    `,
+  }),
+
+  // ─── Tutor application rejected ───────────────────────────
+  tutorRejected: ({ name, reason, unmetCriteria }) => ({
+    subject: "Your TutorLink tutor application needs some changes",
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+        <div style="background:#1B4332;padding:24px;border-radius:12px 12px 0 0">
+          <h1 style="color:#fff;margin:0;font-size:22px">TutorLink</h1>
+        </div>
+        <div style="background:#fff;padding:32px;border:1px solid #EAEAE3;border-top:none;border-radius:0 0 12px 12px">
+          <h2 style="color:#141410;margin-top:0">Your application isn't approved yet</h2>
+          <p style="color:#4A4A42">Hi <strong>${name}</strong>,</p>
+          <p style="color:#4A4A42">
+            Thanks for applying to teach on TutorLink. After review, we're not able to approve your
+            application in its current state. Here's what our admin team noted:
+          </p>
+          <div style="background:#F4F4EF;border-radius:8px;padding:16px;margin:20px 0">
+            <p style="margin:0 0 8px;color:#141410;font-size:14px;font-weight:600">Reason</p>
+            <p style="margin:0;color:#4A4A42;font-size:14px">${reason}</p>
+          </div>
+          ${
+            unmetCriteria && unmetCriteria.length
+              ? `<div style="margin:20px 0">
+                  <p style="margin:0 0 8px;color:#141410;font-size:14px;font-weight:600">What's missing:</p>
+                  <ul style="margin:0;padding-left:20px;color:#4A4A42;font-size:14px">
+                    ${unmetCriteria.map((c) => `<li style="margin-bottom:4px">${c}</li>`).join("")}
+                  </ul>
+                </div>`
+              : ""
+          }
+          <p style="color:#4A4A42">
+            This isn't final — you're welcome to update your profile and documents to address the
+            points above and resubmit for review at any time from your Profile page.
+          </p>
+          <div style="text-align:center;margin:28px 0">
+            <a href="${process.env.CLIENT_URL}/profile"
+              style="background:#1B4332;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block">
+              Update your profile
+            </a>
+          </div>
+        </div>
+        <p style="text-align:center;color:#8C8C82;font-size:12px;margin-top:16px">
+          © ${new Date().getFullYear()} TutorLink. All rights reserved.
+        </p>
+      </div>
+    `,
+  }),
 };
 
 // ─── Transporter ────────────────────────────────────────────

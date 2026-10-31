@@ -3,6 +3,7 @@ const { protect, restrictTo } = require("../middleware/auth.middleware");
 const {
   getStats,
   getPendingTutors,
+  getRejectedTutors,
   approveTutor,
   rejectTutor,
   getUsers,
@@ -26,8 +27,9 @@ router.get("/stats", getStats);
 router.get("/earnings", getEarnings);
 
 router.get("/tutors/pending", getPendingTutors);
+router.get("/tutors/rejected", getRejectedTutors);
 router.patch("/tutors/:id/approve", approveTutor);
-router.delete("/tutors/:id", rejectTutor);
+router.patch("/tutors/:id/reject", rejectTutor);
 
 router.get("/users", getUsers);
 router.patch("/users/:id/status", setUserActive);

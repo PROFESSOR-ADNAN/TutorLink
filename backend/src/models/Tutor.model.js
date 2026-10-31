@@ -72,6 +72,43 @@ const tutorSchema = new mongoose.Schema(
       type: Boolean,
       default: false, // Admin must approve new tutors
     },
+    // The full lifecycle status. isApproved above is kept in sync with this
+    // (true only when 'approved') so the existing public-listing query
+    // ({isApproved: true}) doesn't need to change — but this is the field
+    // that actually drives the admin review workflow, since unlike a plain
+    // boolean it can represent a REJECTED application distinctly from one
+    // that's simply still pending, and a rejection here does NOT delete the
+    // tutor's profile, documents, or payout setup — they can fix whatever
+    // was wrong and resubmit without starting over from scratch.
+    applicationStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
+    // Documents submitted for identity/education verification — reviewed
+    // by an admin before approval. Distinct from `certificates` above,
+    // which is public-facing ("credentials shown on your profile").
+    verificationDocuments: [
+      {
+        type: {
+          type: String,
+          enum: ['national_id', 'education', 'certificate', 'other'],
+          required: true,
+        },
+        name: String,
+        url: { type: String, required: true },
+        uploadedAt: { type: Date, default: Date.now },
+      },
+    ],
+    // Populated only when applicationStatus === 'rejected'
+    rejection: {
+      reason: { type: String, maxlength: 1000 },
+      // Which specific requirements the admin checked off as NOT met —
+      // shown back to the tutor so they know exactly what to fix.
+      unmetCriteria: [String],
+      rejectedAt: Date,
+      rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    },
     isAvailable: {
       type: Boolean,
       default: true,

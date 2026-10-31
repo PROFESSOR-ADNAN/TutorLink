@@ -36,6 +36,8 @@ export default function Footer() {
 
   const platformLinks = [
     { to: '/tutors', label: 'Find Tutors' },
+    { to: '/for-students', label: 'For Students' },
+    { to: '/become-a-tutor', label: 'Become a Tutor' },
     ...(!isAuthenticated ? [{ to: '/register', label: 'Sign Up' }] : []),
   ];
 

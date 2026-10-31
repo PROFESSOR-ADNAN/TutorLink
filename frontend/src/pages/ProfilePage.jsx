@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -9,6 +9,8 @@ import Card from '../components/ui/Card';
 import Avatar from '../components/ui/Avatar';
 import FormField from '../components/ui/FormField';
 import { Skeleton } from '../components/ui/Skeleton';
+import ImageCropModal from '../components/ui/ImageCropModal';
+import { toEthiopianTime } from '../utils/ethiopianTime';
 
 const SUBJECTS_LIST = ['Mathematics', 'Physics', 'Chemistry', 'Programming', 'English', 'Biology', 'History', 'Spanish', 'Economics', 'Music'];
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -116,6 +118,119 @@ function SectionCard({ title, action, children }) {
   );
 }
 
+const DOC_TYPES = [
+  { value: 'national_id', label: 'National ID', required: true, hint: 'A clear photo or scan of your government-issued ID' },
+  { value: 'education', label: 'Education document', required: false, hint: 'Degree, diploma, or transcript' },
+  { value: 'certificate', label: 'Teaching certificate', required: false, hint: 'Any relevant teaching or subject certification' },
+];
+
+/** Upload/manage the documents an admin reviews before approving a tutor.
+ * National ID is required; education/certificates are recommended but not
+ * strictly required, since not every subject has a formal certification. */
+function VerificationDocuments({ tutorMeta, onChange }) {
+  const [uploadingType, setUploadingType] = useState(null);
+  const fileInputRef = useRef(null);
+  const pendingTypeRef = useRef(null);
+
+  const docs = tutorMeta?.verificationDocuments || [];
+  const hasId = docs.some((d) => d.type === 'national_id');
+
+  const triggerUpload = (type) => {
+    pendingTypeRef.current = type;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    const type = pendingTypeRef.current;
+    e.target.value = ''; // allow re-selecting the same file later
+    if (!file || !type) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File is too large — max 10MB');
+      return;
+    }
+
+    setUploadingType(type);
+    const formData = new FormData();
+    formData.append('document', file);
+    formData.append('type', type);
+    formData.append('name', file.name);
+
+    try {
+      await api.post('/tutors/me/documents', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Document uploaded');
+      onChange();
+    } catch (err) {
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setUploadingType(null);
+    }
+  };
+
+  const removeDoc = async (docId) => {
+    try {
+      await api.delete(`/tutors/me/documents/${docId}`);
+      toast.success('Document removed');
+      onChange();
+    } catch (err) {
+      toast.error(err.message || 'Failed to remove document');
+    }
+  };
+
+  return (
+    <Card padding="lg">
+      <h2 className="font-sans font-semibold text-ink-900 text-base mb-1">Verification documents</h2>
+      <p className="text-sm text-ink-400 mb-4">
+        Required before your profile can be approved — this is how we confirm you are who you say you are.
+        {!hasId && <span className="text-red-500 font-medium"> A national ID is required.</span>}
+      </p>
+
+      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf"
+        className="hidden" onChange={handleFileChange} />
+
+      <div className="space-y-3">
+        {DOC_TYPES.map(({ value, label, required, hint }) => {
+          const uploaded = docs.filter((d) => d.type === value);
+          return (
+            <div key={value} className="border border-canvas-300 rounded-xl p-4">
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <div>
+                  <span className="text-sm font-medium text-ink-900">{label}</span>
+                  {required && <span className="text-red-500 text-xs ml-1">*required</span>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => triggerUpload(value)}
+                  disabled={uploadingType === value}
+                  className="btn-outline btn-sm"
+                >
+                  {uploadingType === value ? 'Uploading…' : 'Upload'}
+                </button>
+              </div>
+              <p className="text-xs text-ink-400 mb-2">{hint}</p>
+              {uploaded.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {uploaded.map((d) => (
+                    <div key={d._id} className="flex items-center gap-2 bg-canvas-100 border border-canvas-300 rounded-lg px-2.5 py-1.5">
+                      <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent hover:underline truncate max-w-[10rem]">
+                        {d.name || 'View file'}
+                      </a>
+                      <button type="button" onClick={() => removeDoc(d._id)} className="text-ink-400 hover:text-red-500" aria-label="Remove document">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 export default function ProfilePage() {
   const { user, updateUser } = useAuthStore();
   const [searchParams] = useSearchParams();
@@ -171,6 +286,7 @@ export default function ProfilePage() {
   const coverInputRef = useRef(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [cropTarget, setCropTarget] = useState(null); // { type: 'avatar'|'cover', file }
 
   // Bank list for the payout-setup dropdown — Chapa has no hosted
   // onboarding, so the tutor picks their bank here directly.
@@ -207,54 +323,51 @@ export default function ProfilePage() {
     }
   };
 
-  const handleAvatarSelect = async (e) => {
+  const handleAvatarSelect = (e) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-selecting the same file later
     if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Photo is too large — max 10MB');
+      return;
+    }
+    setCropTarget({ type: 'avatar', file });
+  };
 
-    setUploadingAvatar(true);
+  const handleCoverSelect = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Photo is too large — max 10MB');
+      return;
+    }
+    setCropTarget({ type: 'cover', file });
+  };
+
+  const handleCroppedSave = async (blob) => {
+    const type = cropTarget.type;
+    const setUploading = type === 'avatar' ? setUploadingAvatar : setUploadingCover;
+    setUploading(true);
+    setCropTarget(null);
+
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', blob, type === 'avatar' ? 'avatar.jpg' : 'cover.jpg');
     try {
-      const { user: updated } = await api.post('/users/me/avatar', formData);
+      const { user: updated } = await api.post(`/users/me/${type === 'avatar' ? 'avatar' : 'cover'}`, formData);
       updateUser(updated);
-      toast.success('Photo updated');
+      toast.success(type === 'avatar' ? 'Photo updated' : 'Cover photo updated');
     } catch (err) {
       toast.error(err.message || 'Failed to upload photo');
     } finally {
-      setUploadingAvatar(false);
+      setUploading(false);
     }
   };
 
-  const handleCoverSelect = async (e) => {
-    console.log(e.target)
-    console.log("whatssss")
-    console.log(e.target.files)
-    console.log(e.target.value)
-    const file = e.target.files?.[0];
-
-    e.target.value = '';
-    if (!file) return;
-
-    setUploadingCover(true);
-    const formData = new FormData();
-    formData.append('image', file);
-    console.log(formData)
-    try {
-      const { user: updated } = await api.post('/users/me/cover', formData);
-      updateUser(updated);
-      toast.success('Cover photo updated');
-    } catch (err) {
-      toast.error(err.message || 'Failed to upload cover photo');
-    } finally {
-      setUploadingCover(false);
-    }
-  };
-
-  useEffect(() => {
+  const loadTutorProfile = useCallback(() => {
     if (user?.role !== 'tutor') return;
     setLoadingTutor(true);
-    api
+    return api
       .get('/tutors/me')
       .then((data) => {
         const t = data.tutor;
@@ -273,6 +386,9 @@ export default function ProfilePage() {
           averageRating: t.averageRating || 0,
           totalSessions: t.totalSessions || 0,
           isApproved: t.isApproved,
+          applicationStatus: t.applicationStatus || 'pending',
+          verificationDocuments: t.verificationDocuments || [],
+          rejection: t.rejection || null,
           payoutsEnabled: t.payoutsEnabled,
           payoutAccount: t.payoutAccount,
         });
@@ -281,6 +397,10 @@ export default function ProfilePage() {
       .catch(() => setHasTutorProfile(false)) // 404 = no profile yet, that's fine
       .finally(() => setLoadingTutor(false));
   }, [user?.role]);
+
+  useEffect(() => {
+    loadTutorProfile();
+  }, [loadTutorProfile]);
 
   const savePersonal = async (e) => {
     e.preventDefault();
@@ -659,6 +779,9 @@ export default function ProfilePage() {
                         Add your subjects, rate, and availability so students can find and book you.
                       </p>
                       <button onClick={() => goEdit('tutor')} className="btn-primary btn-sm">Set up tutor profile</button>
+                      <Link to="/become-a-tutor" className="text-xs text-accent hover:underline ml-3">
+                        Read the tutor requirements first →
+                      </Link>
                     </div>
                   </div>
                 )
@@ -763,9 +886,29 @@ export default function ProfilePage() {
                         <span className="text-lg">⚠️</span>
                         <p className="text-sm text-gold-800">
                           You haven't created a tutor profile yet. Fill out the fields below and submit — required fields are{' '}
-                          <strong>subjects</strong>, <strong>education level</strong>, and <strong>hourly rate</strong>.
+                          <strong>subjects</strong>, <strong>education level</strong>, <strong>hourly rate</strong>, and a{' '}
+                          <strong>national ID</strong> for verification.
                         </p>
                       </div>
+                    )}
+
+                    {tutorMeta?.applicationStatus === 'rejected' && (
+                      <div className="card p-4 bg-red-50 border-red-200">
+                        <p className="text-sm font-semibold text-red-800 mb-1">Your application wasn't approved</p>
+                        <p className="text-sm text-red-700 mb-2">{tutorMeta.rejection?.reason}</p>
+                        {tutorMeta.rejection?.unmetCriteria?.length > 0 && (
+                          <ul className="text-sm text-red-700 list-disc pl-5 space-y-0.5">
+                            {tutorMeta.rejection.unmetCriteria.map((c) => <li key={c}>{c}</li>)}
+                          </ul>
+                        )}
+                        <p className="text-xs text-red-600 mt-2">
+                          Fix what's needed above and save — your application automatically goes back into the review queue.
+                        </p>
+                      </div>
+                    )}
+
+                    {hasTutorProfile && (
+                      <VerificationDocuments tutorMeta={tutorMeta} onChange={loadTutorProfile} />
                     )}
 
                     <Card padding="lg">
@@ -795,12 +938,14 @@ export default function ProfilePage() {
                         </FormField>
                         <FormField label="Years of experience">
                           <input type="number" min={0} max={50} className="input" value={tutorProfile.experience}
-                            onChange={(e) => setTutorProfile({ ...tutorProfile, experience: Number(e.target.value) })} />
+                            onChange={(e) => setTutorProfile({ ...tutorProfile, experience: e.target.value === '' ? '' : Number(e.target.value) })}
+                            onBlur={() => setTutorProfile((f) => ({ ...f, experience: f.experience === '' ? 0 : f.experience }))} />
                         </FormField>
                         <FormField label="Hourly rate (ETB)" required>
                           <div className="relative">
                             <input type="number" min={1} className="input pr-14" value={tutorProfile.hourlyRate}
-                              onChange={(e) => setTutorProfile({ ...tutorProfile, hourlyRate: Number(e.target.value) })} />
+                              onChange={(e) => setTutorProfile({ ...tutorProfile, hourlyRate: e.target.value === '' ? '' : Number(e.target.value) })}
+                              onBlur={() => setTutorProfile((f) => ({ ...f, hourlyRate: f.hourlyRate === '' ? 1 : f.hourlyRate }))} />
                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 text-sm">ETB</span>
                           </div>
                         </FormField>
@@ -848,12 +993,15 @@ export default function ProfilePage() {
                               </div>
                               <div className="flex-1 space-y-2">
                                 {ranges.map((r) => (
-                                  <div key={r.index} className="flex items-center gap-2">
+                                  <div key={r.index} className="flex items-center gap-2 flex-wrap">
                                     <input type="time" className="input py-1.5 w-32" value={r.startTime}
                                       onChange={(e) => updateAvailabilityRange(r.index, 'startTime', e.target.value)} />
                                     <span className="text-ink-400 text-sm">to</span>
                                     <input type="time" className="input py-1.5 w-32" value={r.endTime}
                                       onChange={(e) => updateAvailabilityRange(r.index, 'endTime', e.target.value)} />
+                                    <span className="text-xs text-ink-400">
+                                      ({toEthiopianTime(r.startTime)} – {toEthiopianTime(r.endTime)} Eth.)
+                                    </span>
                                     <button type="button" onClick={() => removeAvailabilityRange(r.index)}
                                       className="text-ink-400 hover:text-red-500 transition-colors p-1" aria-label="Remove this time range">
                                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -980,6 +1128,16 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {cropTarget && (
+        <ImageCropModal
+          file={cropTarget.file}
+          aspect={cropTarget.type === 'avatar' ? 1 : 3}
+          title={cropTarget.type === 'avatar' ? 'Adjust profile photo' : 'Adjust cover photo'}
+          onCancel={() => setCropTarget(null)}
+          onSave={handleCroppedSave}
+        />
+      )}
     </div>
   );
 }

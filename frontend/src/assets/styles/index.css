@@ -141,7 +141,7 @@
   }
 
   ::selection {
-    background: rgb(var(--brand-primary) / 0.25);
+    background: rgb(var(--brand-gold) / 0.45);
   }
 
   /* Native scrollbar — matches the theme instead of defaulting to the

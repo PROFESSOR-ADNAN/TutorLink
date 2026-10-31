@@ -120,13 +120,18 @@ exports.createTutorProfile = catchAsync(async (req, res, next) => {
     }
 
     // Deactivated profile exists — reactivate it with the new submitted data
-    // instead of creating a new document (unique constraint on user field)
+    // instead of creating a new document (unique constraint on user field).
+    // Deliberately NOT touching verificationDocuments or payout fields here
+    // — those carry over from the previous cycle rather than being wiped,
+    // so reactivating doesn't force the tutor to redo ID verification or
+    // bank/payout setup from scratch.
     const reactivated = await Tutor.findByIdAndUpdate(
       existing._id,
       {
         ...req.body,
         isAvailable: true,
         isApproved: false, // Must go through approval again
+        applicationStatus: "pending",
       },
       { new: true, runValidators: true },
     );
@@ -144,6 +149,42 @@ exports.createTutorProfile = catchAsync(async (req, res, next) => {
   res.status(201).json({ tutor });
 });
 
+// ─── Upload a verification document ───────────────────────
+// National ID, education proof, or a teaching certificate — reviewed by an
+// admin before approval (see admin.controller.js). Multiple documents can
+// be uploaded (e.g. ID + degree); each call adds one more to the list.
+exports.uploadVerificationDocument = catchAsync(async (req, res, next) => {
+  const { type, name } = req.body;
+  if (!["national_id", "education", "certificate", "other"].includes(type)) {
+    return next(new AppError("Invalid document type", 400));
+  }
+  if (!req.file) return next(new AppError("No file uploaded", 400));
+
+  const tutor = await Tutor.findOne({ user: req.user._id });
+  if (!tutor) return next(new AppError("You do not have a tutor profile yet", 404));
+
+  tutor.verificationDocuments.push({
+    type,
+    name: name || req.file.originalname,
+    url: req.file.path, // Cloudinary secure URL, set by CloudinaryStorage
+  });
+  await tutor.save({ validateBeforeSave: false });
+
+  res.status(200).json({ tutor });
+});
+
+exports.deleteVerificationDocument = catchAsync(async (req, res, next) => {
+  const tutor = await Tutor.findOne({ user: req.user._id });
+  if (!tutor) return next(new AppError("You do not have a tutor profile yet", 404));
+
+  tutor.verificationDocuments = tutor.verificationDocuments.filter(
+    (d) => d._id.toString() !== req.params.docId,
+  );
+  await tutor.save({ validateBeforeSave: false });
+
+  res.status(200).json({ tutor });
+});
+
 // ─── Update Tutor Profile ─────────────────────────────────
 exports.updateTutorProfile = catchAsync(async (req, res, next) => {
   if (req.body.availability) {
@@ -159,12 +200,23 @@ exports.updateTutorProfile = catchAsync(async (req, res, next) => {
   // Strip fields that must never be changed via this route
   const {
     isApproved,
+    applicationStatus,
+    rejection,
+    verificationDocuments,
     averageRating,
     totalReviews,
     totalSessions,
     user: _user, // prevent user field reassignment
     ...updates
   } = req.body;
+
+  // If a previously-rejected tutor edits their profile, treat that as them
+  // trying to fix what was wrong and put them back in the review queue —
+  // rather than leaving them permanently stuck on "rejected" with no way
+  // back in short of contacting support.
+  if (tutor.applicationStatus === "rejected") {
+    updates.applicationStatus = "pending";
+  }
 
   const updated = await Tutor.findByIdAndUpdate(tutor._id, updates, {
     new: true,

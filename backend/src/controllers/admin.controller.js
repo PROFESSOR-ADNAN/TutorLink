@@ -3,6 +3,7 @@ const Tutor = require("../models/Tutor.model");
 const Booking = require("../models/Booking.model");
 const catchAsync = require("../utils/catchAsync");
 const { AppError } = require("../middleware/error.middleware");
+const { sendEmail } = require("../utils/email");
 
 // ─── Platform-wide stats ───────────────────────────────────
 exports.getStats = catchAsync(async (req, res, next) => {
@@ -21,7 +22,7 @@ exports.getStats = catchAsync(async (req, res, next) => {
     User.countDocuments({ role: "student" }),
     User.countDocuments({ role: "tutor" }),
     User.countDocuments({ isActive: true }),
-    Tutor.countDocuments({ isApproved: false }),
+    Tutor.countDocuments({ applicationStatus: "pending" }),
     Booking.countDocuments(),
     Booking.countDocuments({ status: "completed" }),
     Booking.countDocuments({ status: "cancelled" }),
@@ -48,29 +49,94 @@ exports.getStats = catchAsync(async (req, res, next) => {
 
 // ─── Tutor approval queue ───────────────────────────────────
 exports.getPendingTutors = catchAsync(async (req, res, next) => {
-  const tutors = await Tutor.find({ isApproved: false })
+  const tutors = await Tutor.find({ applicationStatus: "pending" })
     .populate("user", "name email avatar createdAt")
     .sort("-createdAt");
   res.status(200).json({ tutors });
 });
 
+// Tutors already rejected (or previously rejected and not yet resubmitted)
+// — kept separate from the main queue so it doesn't get mixed in with
+// fresh applications actually awaiting a decision.
+exports.getRejectedTutors = catchAsync(async (req, res, next) => {
+  const tutors = await Tutor.find({ applicationStatus: "rejected" })
+    .populate("user", "name email avatar createdAt")
+    .sort("-rejection.rejectedAt");
+  res.status(200).json({ tutors });
+});
+
 exports.approveTutor = catchAsync(async (req, res, next) => {
-  const tutor = await Tutor.findByIdAndUpdate(
-    req.params.id,
-    { isApproved: true },
-    { new: true },
-  ).populate("user", "name email avatar");
+  const tutor = await Tutor.findById(req.params.id).populate("user", "name email avatar");
   if (!tutor) return next(new AppError("Tutor profile not found", 404));
+
+  const hasId = tutor.verificationDocuments?.some((d) => d.type === "national_id");
+  if (!hasId) {
+    return next(
+      new AppError(
+        "This tutor hasn't uploaded a national ID yet — verification documents are required before approval.",
+        400,
+      ),
+    );
+  }
+
+  tutor.isApproved = true;
+  tutor.applicationStatus = "approved";
+  await tutor.save({ validateBeforeSave: false });
+
+  try {
+    await sendEmail({
+      to: tutor.user.email,
+      subject: "You're approved — welcome to TutorLink!",
+      template: "tutorApproved",
+      data: { name: tutor.user.name },
+    });
+  } catch (err) {
+    console.error("Failed to send tutor approval email:", err.message);
+  }
+
   res.status(200).json({ tutor });
 });
 
-// Rejecting deletes the application outright — there's no "rejected" state
-// in the model, so the person can simply submit a fresh application later
-// from their Profile page if they choose to.
+// Rejection is a SOFT state, not a delete — the tutor's profile, uploaded
+// documents, and payout setup all survive it. They can fix whatever was
+// wrong and edit their profile to resubmit (see tutor.controller.js
+// updateTutorProfile, which automatically flips a rejected application
+// back to "pending" the moment they save an edit).
 exports.rejectTutor = catchAsync(async (req, res, next) => {
-  const tutor = await Tutor.findByIdAndDelete(req.params.id);
+  const { reason, unmetCriteria } = req.body;
+  if (!reason || !reason.trim()) {
+    return next(new AppError("Please provide a reason for rejecting this application", 400));
+  }
+
+  const tutor = await Tutor.findById(req.params.id).populate("user", "name email");
   if (!tutor) return next(new AppError("Tutor profile not found", 404));
-  res.status(200).json({ message: "Tutor application rejected" });
+
+  tutor.isApproved = false;
+  tutor.applicationStatus = "rejected";
+  tutor.rejection = {
+    reason: reason.trim(),
+    unmetCriteria: Array.isArray(unmetCriteria) ? unmetCriteria : [],
+    rejectedAt: new Date(),
+    rejectedBy: req.user._id,
+  };
+  await tutor.save({ validateBeforeSave: false });
+
+  try {
+    await sendEmail({
+      to: tutor.user.email,
+      subject: "Your TutorLink tutor application needs some changes",
+      template: "tutorRejected",
+      data: {
+        name: tutor.user.name,
+        reason: tutor.rejection.reason,
+        unmetCriteria: tutor.rejection.unmetCriteria,
+      },
+    });
+  } catch (err) {
+    console.error("Failed to send tutor rejection email:", err.message);
+  }
+
+  res.status(200).json({ tutor });
 });
 
 // ─── Earnings / financial dashboard ─────────────────────────
@@ -121,10 +187,11 @@ exports.getEarnings = catchAsync(async (req, res, next) => {
   };
 
   const [totals, statusBreakdown, daily, monthly, byTutor] = await Promise.all([
-    // Overall totals across every paid booking, regardless of whether the
-    // session itself has since happened (status: 'completed') or is still
-    // upcoming (status: 'confirmed') — payment settles at booking time via
-    // Chapa settlement, not at session-completion time.
+    // Overall totals across every paid booking. NOTE: tutorPayouts below
+    // counts only payouts Chapa has actually confirmed as released — the
+    // tutor's share is now held until the session is marked completed
+    // (see releaseTutorPayout in payment.controller.js), not settled
+    // automatically the moment the student pays.
     Booking.aggregate([
       { $match: paidMatch },
       {
@@ -132,7 +199,12 @@ exports.getEarnings = catchAsync(async (req, res, next) => {
           _id: null,
           grossRevenue: { $sum: "$payment.amount" },
           platformFees: { $sum: feeFallback },
-          tutorPayouts: { $sum: payoutFallback },
+          tutorPayouts: {
+            $sum: { $cond: [{ $eq: ["$payment.payoutStatus", "released"] }, payoutFallback, 0] },
+          },
+          pendingPayouts: {
+            $sum: { $cond: [{ $ne: ["$payment.payoutStatus", "released"] }, payoutFallback, 0] },
+          },
           paidBookings: { $sum: 1 },
         },
       },
@@ -328,10 +400,56 @@ exports.setUserActive = catchAsync(async (req, res, next) => {
 
 // ─── Recent bookings (platform-wide, read-only) ─────────────
 exports.getRecentBookings = catchAsync(async (req, res, next) => {
-  const bookings = await Booking.find()
-    .populate("student", "name avatar")
-    .populate({ path: "tutor", populate: { path: "user", select: "name avatar" } })
-    .sort("-createdAt")
-    .limit(50);
-  res.status(200).json({ bookings });
+  const {
+    status,
+    paymentStatus,
+    subject,
+    studentSearch,
+    tutorSearch,
+    dateFrom,
+    dateTo,
+    sort = "-scheduledAt",
+    page = 1,
+    limit = 25,
+  } = req.query;
+
+  const filter = {};
+  if (status) filter.status = status;
+  if (paymentStatus) filter["payment.status"] = paymentStatus;
+  if (subject) filter.subject = new RegExp(subject.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+
+  if (dateFrom || dateTo) {
+    filter.scheduledAt = {};
+    if (dateFrom) filter.scheduledAt.$gte = new Date(dateFrom);
+    if (dateTo) filter.scheduledAt.$lte = new Date(`${dateTo}T23:59:59`);
+  }
+
+  // Name search on student/tutor requires resolving User ids first, since
+  // that's where `name` actually lives (not on the Booking document itself).
+  if (studentSearch) {
+    const re = new RegExp(studentSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    const ids = await User.find({ role: "student", name: re }).distinct("_id");
+    filter.student = { $in: ids };
+  }
+  if (tutorSearch) {
+    const re = new RegExp(tutorSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    const tutorUserIds = await User.find({ role: "tutor", name: re }).distinct("_id");
+    const tutorIds = await Tutor.find({ user: { $in: tutorUserIds } }).distinct("_id");
+    filter.tutor = { $in: tutorIds };
+  }
+
+  const [bookings, total] = await Promise.all([
+    Booking.find(filter)
+      .populate("student", "name avatar email")
+      .populate({ path: "tutor", populate: { path: "user", select: "name avatar email" } })
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(Number(limit)),
+    Booking.countDocuments(filter),
+  ]);
+
+  res.status(200).json({
+    bookings,
+    pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / limit) },
+  });
 });

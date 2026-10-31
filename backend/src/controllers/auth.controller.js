@@ -13,6 +13,7 @@ const signToken = (id) =>
 
 const sendTokenResponse = (user, statusCode, res) => {
   const token = signToken(user._id);
+  const isProduction = process.env.NODE_ENV === "production";
 
   const cookieOptions = {
     expires: new Date(
@@ -20,16 +21,17 @@ const sendTokenResponse = (user, statusCode, res) => {
         (process.env.JWT_COOKIE_EXPIRES_IN || 7) * 24 * 60 * 60 * 1000,
     ),
     httpOnly: true, // Cookie not accessible by JavaScript (prevents XSS token theft)
-    secure: process.env.NODE_ENV === "production", // HTTPS only in production
-    sameSite: "strict", // CSRF protection
-    // sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: isProduction, // HTTPS required in production (and required for SameSite=None)
+    sameSite: isProduction ? "none" : "lax", // 'none' needed for cross-domain Vercel frontend <-> backend
   };
 
   res.cookie("token", token, cookieOptions);
 
   user.password = undefined; // Remove password from output
 
-  res.status(statusCode).json({ user });
+  // Also send token in body so clients can use Authorization: Bearer <token>
+  // as a fallback if third-party cookies are blocked by the browser
+  res.status(statusCode).json({ user, token });
 };
 
 // ─── Register ─────────────────────────────────────────────
@@ -89,7 +91,13 @@ exports.login = catchAsync(async (req, res, next) => {
 
 // ─── Logout ───────────────────────────────────────────────
 exports.logout = (req, res) => {
-  res.cookie("token", "", { expires: new Date(0), httpOnly: true });
+  const isProduction = process.env.NODE_ENV === "production";
+  res.cookie("token", "", {
+    expires: new Date(0),
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+  });
   res.status(200).json({ message: "Logged out successfully" });
 };
 

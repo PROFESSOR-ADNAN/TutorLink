@@ -7,7 +7,7 @@ export default function PrivacyPage() {
       <div className="prose prose-sm max-w-none space-y-8 text-ink-700">
         <section>
           <h2 className="font-serif text-xl text-ink-900 mb-2">1. Information we collect</h2>
-          <p>When you create an account, we collect your name, email address, and password (stored encrypted, never in plain text). If you become a tutor, we additionally collect the subjects you teach, your hourly rate, education level, and bio. Booking a session shares your chosen time slot and payment details with our payment processor, Stripe — we never see or store your full card number.</p>
+          <p>When you create an account, we collect your name, email address, and password (stored encrypted, never in plain text). If you become a tutor, we additionally collect the subjects you teach, your hourly rate, education level, bio, and verification documents (see Section 3). Booking a session shares your chosen time slot and payment details with our payment processor, Chapa — we never see or store your full card or mobile money PIN.</p>
         </section>
 
         <section>

@@ -10,11 +10,10 @@ const { initSocket } = require('./config/socket');
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION 💥 Shutting down...');
   console.error(err.name, err.message);
-  process.exit(1);
+  if (require.main === module) {
+    process.exit(1);
+  }
 });
-
-// Connect to MongoDB
-connectDB();
 
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
@@ -25,16 +24,27 @@ if (!process.env.CHAPA_SECRET_KEY) {
   );
 }
 
-// Attach Socket.IO to the HTTP server (for real-time chat)
-initSocket(server);
+// Only listen and initialize Socket.IO if executed directly (e.g. `node src/server.js` or `npm run dev`)
+// In serverless environments like Vercel, the app is imported and wrapped by Vercel's serverless handler.
+if (require.main === module) {
+  // Connect to MongoDB
+  connectDB().catch((err) => {
+    console.error('Initial DB connection error:', err.message);
+  });
 
-server.listen(PORT, () => {
-  console.log(`🚀 TutorLink API running on port ${PORT} in ${process.env.NODE_ENV} mode`);
-});
+  // Attach Socket.IO to the HTTP server (for real-time chat)
+  initSocket(server);
 
-// Graceful shutdown on unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  console.error('UNHANDLED REJECTION 💥 Shutting down...');
-  console.error(err.name, err.message);
-  server.close(() => process.exit(1));
-});
+  server.listen(PORT, () => {
+    console.log(`🚀 TutorLink API running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+  });
+
+  // Graceful shutdown on unhandled promise rejections
+  process.on('unhandledRejection', (err) => {
+    console.error('UNHANDLED REJECTION 💥 Shutting down...');
+    console.error(err.name, err.message);
+    server.close(() => process.exit(1));
+  });
+}
+
+module.exports = app;

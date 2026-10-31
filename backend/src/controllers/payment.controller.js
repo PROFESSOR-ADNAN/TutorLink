@@ -135,9 +135,11 @@ exports.initializePayment = catchAsync(async (req, res, next) => {
       title: "TutorLink",
       description: `${booking.subject} session`,
     },
-    // Splits this payment automatically between us and the tutor's
-    // subaccount — see registerPayoutAccount for how split_value is set.
-    subaccounts: { id: tutor.chapaSubaccountId },
+    // NOTE: deliberately NOT passing `subaccounts` here. That would make
+    // Chapa split and send the tutor's share the instant the student pays —
+    // before the session has even happened. Instead the full amount comes
+    // to our own account, and the tutor's share is transferred separately
+    // once the session is marked completed (see releaseTutorPayout below).
   });
 
   booking.payment.txRef = txRef;
@@ -299,3 +301,57 @@ exports.verifyPayment = catchAsync(async (req, res, next) => {
 
   res.status(200).json({ status: "unpaid", booking });
 });
+
+// ─── Release a tutor's payout for a completed session ──────
+// Called from booking.controller.js the moment a session is marked
+// completed. Transfers the tutor's already-calculated share
+// (payment.tutorPayoutAmount, set back at initializePayment) directly to
+// their registered bank account via Chapa's Transfers API, using the bank
+// details captured in registerPayoutAccount.
+//
+// IMPORTANT: this calls Chapa's `/transfers` endpoint using the field names
+// documented for direct bank transfers at the time this was written. Chapa's
+// API has changed before (this whole integration replaced a prior Stripe
+// one) — verify the request shape against Chapa's current API docs /
+// sandbox before relying on this in production, since it can't be
+// exercised against the real Chapa API from here.
+exports.releaseTutorPayout = async function releaseTutorPayout(booking) {
+  if (booking.payment.status !== "paid") return booking; // nothing was collected
+  if (booking.payment.payoutStatus === "released") return booking; // already paid out
+  if (!booking.payment.tutorPayoutAmount) return booking; // nothing owed (e.g. free/comp session)
+
+  const tutor = await Tutor.findById(booking.tutor);
+  if (!tutor?.payoutAccount?.accountNumber || !tutor?.payoutAccount?.bankCode) {
+    booking.payment.payoutStatus = "failed";
+    booking.payment.payoutError = "Tutor has no payout bank account on file";
+    await booking.save({ validateBeforeSave: false });
+    return booking;
+  }
+
+  const reference = `payout-${booking._id}-${crypto.randomBytes(4).toString("hex")}`;
+  booking.payment.payoutStatus = "pending";
+  booking.payment.payoutReference = reference;
+  await booking.save({ validateBeforeSave: false });
+
+  try {
+    await chapa.post("/transfers", {
+      account_name: tutor.payoutAccount.accountName,
+      account_number: tutor.payoutAccount.accountNumber,
+      bank_code: tutor.payoutAccount.bankCode,
+      amount: booking.payment.tutorPayoutAmount,
+      currency: "ETB",
+      reference,
+    });
+
+    booking.payment.payoutStatus = "released";
+    booking.payment.payoutReleasedAt = new Date();
+    booking.payment.payoutError = undefined;
+  } catch (err) {
+    booking.payment.payoutStatus = "failed";
+    booking.payment.payoutError = err.response?.data?.message || err.message;
+    console.error(`Payout transfer failed for booking ${booking._id}:`, booking.payment.payoutError);
+  }
+
+  await booking.save({ validateBeforeSave: false });
+  return booking;
+};

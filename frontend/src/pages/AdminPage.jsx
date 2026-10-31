@@ -17,6 +17,7 @@ const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'earnings', label: 'Earnings' },
   { key: 'approvals', label: 'Tutor Approvals' },
+  { key: 'rejected', label: 'Rejected' },
   { key: 'cancellations', label: 'Cancellations' },
   { key: 'users', label: 'Users' },
   { key: 'bookings', label: 'Bookings' },
@@ -88,16 +89,21 @@ function EarningsTab() {
   return (
     <div className="space-y-6">
       {/* Top-line totals */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard
           label="Platform commission"
           value={money(totals.platformFees)}
           hint={`${(commissionRate * 100).toFixed(0)}% of gross revenue`}
         />
         <StatCard label="Gross revenue" value={money(totals.grossRevenue)} hint="total charged to students" />
-        <StatCard label="Paid to tutors" value={money(totals.tutorPayouts)} hint="via Stripe Connect" />
+        <StatCard label="Paid to tutors" value={money(totals.tutorPayouts)} hint="released via Chapa" />
+        <StatCard label="Pending payouts" value={money(totals.pendingPayouts || 0)} hint="held until session completes" />
         <StatCard label="Paid bookings" value={totals.paidBookings} />
       </div>
+      <p className="text-xs text-ink-400 -mt-2">
+        A tutor's share is held until the session is marked completed, then transferred — it's no longer
+        split automatically the instant a student pays.
+      </p>
 
       {/* Booking status breakdown — answers "which bookings actually took
           place vs. got cancelled vs. are still upcoming", and where the
@@ -145,7 +151,7 @@ function EarningsTab() {
         {chartData.length === 0 ? (
           <EmptyState
             title="No paid bookings yet"
-            description="This chart is driven entirely by real payments — it'll fill in as soon as a session is actually paid for through Stripe. Test/seeded bookings marked 'paid' without going through checkout won't show a trend here, only in the totals above."
+            description="This chart is driven entirely by real payments — it'll fill in as soon as a session is actually paid for through Chapa. Test/seeded bookings marked 'paid' without going through checkout won't show a trend here, only in the totals above."
           />
         ) : (
           <ResponsiveContainer width="100%" height={280}>
@@ -224,20 +230,115 @@ function EarningsTab() {
   );
 }
 
+const REJECTION_CRITERIA = [
+  'No national ID uploaded',
+  'ID document unclear or unreadable',
+  'Education credentials not provided or insufficient',
+  'Incomplete profile information (bio, subjects, or availability)',
+  'Hourly rate or experience seems inconsistent with credentials',
+  'Suspicious or inconsistent information',
+];
+
+const DOC_TYPE_LABELS = {
+  national_id: 'National ID',
+  education: 'Education document',
+  certificate: 'Teaching certificate',
+  other: 'Other document',
+};
+
+function TutorDocuments({ documents }) {
+  if (!documents?.length) {
+    return <p className="text-xs text-red-500 italic mt-1">No documents uploaded yet</p>;
+  }
+  return (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {documents.map((d) => (
+        <a
+          key={d._id}
+          href={d.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 bg-canvas-100 border border-canvas-300 rounded-lg px-2.5 py-1 text-xs text-accent hover:underline"
+        >
+          📄 {DOC_TYPE_LABELS[d.type] || d.type}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+/** Reject dialog: a free-text reason (required) plus an optional checklist
+ * of specific unmet criteria — both get emailed to the tutor so they know
+ * exactly what to fix before reapplying. */
+function RejectDialog({ tutor, onClose, onConfirm, loading }) {
+  const [reason, setReason] = useState('');
+  const [criteria, setCriteria] = useState([]);
+
+  const toggleCriterion = (c) =>
+    setCriteria((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="bg-surface w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-serif text-lg text-ink-900 mb-1">Reject {tutor.user?.name}'s application</h3>
+        <p className="text-sm text-ink-500 mb-4">
+          This is emailed directly to the tutor, and they can fix the issues and resubmit.
+        </p>
+
+        <label className="label">What's missing or wrong? (checklist)</label>
+        <div className="space-y-2 mb-4">
+          {REJECTION_CRITERIA.map((c) => (
+            <label key={c} className="flex items-start gap-2 text-sm text-ink-700 cursor-pointer">
+              <input type="checkbox" checked={criteria.includes(c)} onChange={() => toggleCriterion(c)} className="mt-0.5" />
+              {c}
+            </label>
+          ))}
+        </div>
+
+        <label className="label">Reason (required, sent to the tutor)</label>
+        <textarea
+          className="input resize-none mb-4"
+          rows={4}
+          placeholder="Explain in your own words why this application isn't being approved..."
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
+
+        <div className="flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="danger" className="flex-1" onClick={() => onConfirm(reason, criteria)} loading={loading} disabled={!reason.trim()}>
+            Reject & notify tutor
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ApprovalsTab() {
   const { data, loading, error, refetch } = useApiData(() => api.get('/admin/tutors/pending'), []);
   const [busyId, setBusyId] = useState(null);
+  const [rejectingTutor, setRejectingTutor] = useState(null);
 
-  const act = async (id, action) => {
+  const approve = async (id) => {
     setBusyId(id);
     try {
-      if (action === 'approve') {
-        await api.patch(`/admin/tutors/${id}/approve`);
-        toast.success('Tutor approved — they are now publicly listed');
-      } else {
-        await api.delete(`/admin/tutors/${id}`);
-        toast.success('Application rejected');
-      }
+      await api.patch(`/admin/tutors/${id}/approve`);
+      toast.success('Tutor approved — they are now publicly listed and notified by email');
+      refetch();
+    } catch (err) {
+      toast.error(err.message || 'Approval failed');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const reject = async (reason, unmetCriteria) => {
+    setBusyId(rejectingTutor._id);
+    try {
+      await api.patch(`/admin/tutors/${rejectingTutor._id}/reject`, { reason, unmetCriteria });
+      toast.success('Application rejected — the tutor has been notified by email');
+      setRejectingTutor(null);
       refetch();
     } catch (err) {
       toast.error(err.message || 'Action failed');
@@ -253,30 +354,97 @@ function ApprovalsTab() {
   }
 
   return (
+    <>
+      <div className="card divide-y divide-canvas-200">
+        {data.tutors.map((t) => {
+          const hasId = t.verificationDocuments?.some((d) => d.type === 'national_id');
+          return (
+            <div key={t._id} className="p-5 flex flex-col sm:flex-row sm:items-start gap-4">
+              <Avatar src={t.user?.avatar} name={t.user?.name} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-sans font-semibold text-sm text-ink-900">{t.user?.name}</span>
+                  {t.user?.createdAt && (
+                    <span className="text-xs text-ink-400">applied {format(new Date(t.user.createdAt), 'MMM d, yyyy')}</span>
+                  )}
+                </div>
+                <div className="text-xs text-ink-400">{t.user?.email}</div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {t.subjects?.map((s) => (
+                    <span key={s} className="badge badge-neutral">{s}</span>
+                  ))}
+                </div>
+                <div className="text-xs text-ink-500 mt-2">
+                  {t.educationLevel}{t.university ? ` · ${t.university}` : ''} · {t.hourlyRate} ETB/hr · {t.experience} yrs experience
+                </div>
+                {t.teachingStyle && <p className="text-xs text-ink-500 mt-2 italic">"{t.teachingStyle}"</p>}
+                <div className="mt-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-400">Verification documents</p>
+                  <TutorDocuments documents={t.verificationDocuments} />
+                </div>
+              </div>
+              <div className="flex sm:flex-col items-stretch gap-2 flex-shrink-0 w-full sm:w-36">
+                <Button size="sm" variant="danger" disabled={busyId === t._id} onClick={() => setRejectingTutor(t)}>
+                  Reject
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={busyId === t._id || !hasId}
+                  title={!hasId ? 'Tutor must upload a national ID first' : undefined}
+                  onClick={() => approve(t._id)}
+                >
+                  Approve
+                </Button>
+                {!hasId && <span className="text-[11px] text-red-500 text-center">No ID uploaded</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {rejectingTutor && (
+        <RejectDialog
+          tutor={rejectingTutor}
+          loading={busyId === rejectingTutor._id}
+          onClose={() => setRejectingTutor(null)}
+          onConfirm={reject}
+        />
+      )}
+    </>
+  );
+}
+
+function RejectedTab() {
+  const { data, loading, error, refetch } = useApiData(() => api.get('/admin/tutors/rejected'), []);
+
+  if (loading) return <SkeletonRows count={3} />;
+  if (error) return <ErrorState message={error} onRetry={refetch} />;
+  if (data.tutors.length === 0) {
+    return <EmptyState icon="📋" title="No rejected applications" description="Applications you reject will be listed here until the tutor resubmits." />;
+  }
+
+  return (
     <div className="card divide-y divide-canvas-200">
       {data.tutors.map((t) => (
-        <div key={t._id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-4">
-          <Avatar src={t.user?.avatar} name={t.user?.name} />
-          <div className="flex-1 min-w-0">
-            <div className="font-sans font-semibold text-sm text-ink-900">{t.user?.name}</div>
-            <div className="text-xs text-ink-400">{t.user?.email}</div>
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {t.subjects?.map((s) => (
-                <span key={s} className="badge badge-neutral">{s}</span>
-              ))}
+        <div key={t._id} className="p-5">
+          <div className="flex items-center gap-3 mb-2">
+            <Avatar src={t.user?.avatar} name={t.user?.name} size="sm" />
+            <div>
+              <div className="font-sans font-semibold text-sm text-ink-900">{t.user?.name}</div>
+              <div className="text-xs text-ink-400">{t.user?.email}</div>
             </div>
-            <div className="text-xs text-ink-500 mt-2">
-              {t.educationLevel}{t.university ? ` · ${t.university}` : ''} · {t.hourlyRate} ETB/hr · {t.experience} yrs experience
-            </div>
+            {t.rejection?.rejectedAt && (
+              <span className="text-xs text-ink-400 ml-auto">rejected {format(new Date(t.rejection.rejectedAt), 'MMM d, yyyy')}</span>
+            )}
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Button size="sm" variant="danger" disabled={busyId === t._id} onClick={() => act(t._id, 'reject')}>
-              Reject
-            </Button>
-            <Button size="sm" disabled={busyId === t._id} onClick={() => act(t._id, 'approve')}>
-              Approve
-            </Button>
+          <div className="bg-canvas-100 border border-canvas-300 rounded-lg p-3 text-sm text-ink-700">
+            {t.rejection?.reason}
           </div>
+          {t.rejection?.unmetCriteria?.length > 0 && (
+            <ul className="text-xs text-ink-500 list-disc pl-5 mt-2 space-y-0.5">
+              {t.rejection.unmetCriteria.map((c) => <li key={c}>{c}</li>)}
+            </ul>
+          )}
         </div>
       ))}
     </div>
@@ -434,51 +602,166 @@ function UsersTab() {
   );
 }
 
-function BookingsTab() {
-  const { data, loading, error, refetch } = useApiData(() => api.get('/admin/bookings'), []);
+const BOOKING_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'];
+const PAYMENT_STATUSES = ['unpaid', 'paid', 'refunded'];
 
-  if (loading) return <SkeletonRows count={5} />;
-  if (error) return <ErrorState message={error} onRetry={refetch} />;
-  if (data.bookings.length === 0) {
-    return <EmptyState icon="📅" title="No bookings yet" description="Platform bookings will appear here." />;
-  }
+function csvEscape(value) {
+  const s = String(value ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadBookingsCsv(bookings) {
+  const headers = ['Date', 'Time', 'Student', 'Student Email', 'Tutor', 'Tutor Email', 'Subject', 'Duration (min)', 'Amount (ETB)', 'Payment Status', 'Session Status'];
+  const rows = bookings.map((b) => [
+    format(new Date(b.scheduledAt), 'yyyy-MM-dd'),
+    format(new Date(b.scheduledAt), 'HH:mm'),
+    b.student?.name,
+    b.student?.email,
+    b.tutor?.user?.name,
+    b.tutor?.user?.email,
+    b.subject,
+    b.duration,
+    b.payment.amount,
+    b.payment.status,
+    b.status,
+  ]);
+  const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tutorlink-bookings-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function BookingsTab() {
+  const [filters, setFilters] = useState({
+    status: '', paymentStatus: '', subject: '', studentSearch: '', tutorSearch: '', dateFrom: '', dateTo: '',
+  });
+  const [page, setPage] = useState(1);
+
+  const query = new URLSearchParams({ ...filters, page, limit: 25 });
+  // Drop empty params so we don't send e.g. status= (matches nothing server-side is fine, but keeps URLs clean)
+  Object.keys(filters).forEach((k) => { if (!filters[k]) query.delete(k); });
+
+  const { data, loading, error, refetch } = useApiData(() => api.get(`/admin/bookings?${query.toString()}`), [JSON.stringify(filters), page]);
+
+  const updateFilter = (key, value) => {
+    setPage(1);
+    setFilters((f) => ({ ...f, [key]: value }));
+  };
+
+  const clearFilters = () => {
+    setPage(1);
+    setFilters({ status: '', paymentStatus: '', subject: '', studentSearch: '', tutorSearch: '', dateFrom: '', dateTo: '' });
+  };
+
+  const hasFilters = Object.values(filters).some(Boolean);
 
   return (
-    <div className="card overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-canvas-200 text-left text-xs font-semibold uppercase tracking-wide text-ink-400">
-              <th className="px-4 py-3">Student</th>
-              <th className="px-4 py-3">Tutor</th>
-              <th className="px-4 py-3">Subject</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Amount</th>
-              <th className="px-4 py-3">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-canvas-200">
-            {data.bookings.map((b) => (
-              <tr key={b._id}>
-                <td className="px-4 py-3 text-ink-900">{b.student?.name}</td>
-                <td className="px-4 py-3 text-ink-900">{b.tutor?.user?.name}</td>
-                <td className="px-4 py-3 text-ink-600">{b.subject}</td>
-                <td className="px-4 py-3 text-ink-600">{format(new Date(b.scheduledAt), 'MMM d, yyyy')}</td>
-                <td className="px-4 py-3 text-ink-900 font-medium">{b.payment.amount} ETB</td>
-                <td className="px-4 py-3">
-                  <Badge variant={
-                    b.status === 'completed' ? 'success' :
-                    b.status === 'confirmed' ? 'forest' :
-                    b.status === 'cancelled' ? 'error' : 'warning'
-                  }>
-                    {b.status}
-                  </Badge>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="card p-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <input className="input text-sm" placeholder="Student name" value={filters.studentSearch}
+            onChange={(e) => updateFilter('studentSearch', e.target.value)} />
+          <input className="input text-sm" placeholder="Tutor name" value={filters.tutorSearch}
+            onChange={(e) => updateFilter('tutorSearch', e.target.value)} />
+          <input className="input text-sm" placeholder="Subject" value={filters.subject}
+            onChange={(e) => updateFilter('subject', e.target.value)} />
+          <select className="input text-sm" value={filters.status} onChange={(e) => updateFilter('status', e.target.value)}>
+            <option value="">Any status</option>
+            {BOOKING_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select className="input text-sm" value={filters.paymentStatus} onChange={(e) => updateFilter('paymentStatus', e.target.value)}>
+            <option value="">Any payment status</option>
+            {PAYMENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <div>
+            <label className="text-xs text-ink-400">From</label>
+            <input type="date" className="input text-sm" value={filters.dateFrom} onChange={(e) => updateFilter('dateFrom', e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs text-ink-400">To</label>
+            <input type="date" className="input text-sm" value={filters.dateTo} onChange={(e) => updateFilter('dateTo', e.target.value)} />
+          </div>
+          <div className="flex items-end gap-2">
+            {hasFilters && <button onClick={clearFilters} className="btn-outline btn-sm flex-1">Clear</button>}
+            <button
+              onClick={() => data && downloadBookingsCsv(data.bookings)}
+              disabled={!data?.bookings?.length}
+              className="btn-secondary btn-sm flex-1"
+            >
+              Export CSV
+            </button>
+          </div>
+        </div>
       </div>
+
+      {loading ? (
+        <SkeletonRows count={5} />
+      ) : error ? (
+        <ErrorState message={error} onRetry={refetch} />
+      ) : data.bookings.length === 0 ? (
+        <EmptyState icon="📅" title="No matching bookings" description="Try adjusting the filters above." />
+      ) : (
+        <>
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-canvas-200 text-left text-xs font-semibold uppercase tracking-wide text-ink-400">
+                    <th className="px-4 py-3">Student</th>
+                    <th className="px-4 py-3">Tutor</th>
+                    <th className="px-4 py-3">Subject</th>
+                    <th className="px-4 py-3">Date & time</th>
+                    <th className="px-4 py-3">Amount</th>
+                    <th className="px-4 py-3">Payment</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-canvas-200">
+                  {data.bookings.map((b) => (
+                    <tr key={b._id}>
+                      <td className="px-4 py-3 text-ink-900">{b.student?.name}</td>
+                      <td className="px-4 py-3 text-ink-900">{b.tutor?.user?.name}</td>
+                      <td className="px-4 py-3 text-ink-600">{b.subject}</td>
+                      <td className="px-4 py-3 text-ink-600">{format(new Date(b.scheduledAt), 'MMM d, yyyy · h:mm a')}</td>
+                      <td className="px-4 py-3 text-ink-900 font-medium">{b.payment.amount} ETB</td>
+                      <td className="px-4 py-3">
+                        <Badge variant={b.payment.status === 'paid' ? 'success' : b.payment.status === 'refunded' ? 'error' : 'warning'}>
+                          {b.payment.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={
+                          b.status === 'completed' ? 'success' :
+                          b.status === 'confirmed' ? 'forest' :
+                          b.status === 'cancelled' ? 'error' : 'warning'
+                        }>
+                          {b.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {data.pagination?.pages > 1 && (
+            <div className="flex items-center justify-between text-sm text-ink-500">
+              <span>{data.pagination.total} total bookings</span>
+              <div className="flex gap-2">
+                <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="btn-outline btn-sm disabled:opacity-40">← Prev</button>
+                <span className="px-2 py-1">Page {page} of {data.pagination.pages}</span>
+                <button disabled={page >= data.pagination.pages} onClick={() => setPage((p) => p + 1)} className="btn-outline btn-sm disabled:opacity-40">Next →</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -514,6 +797,7 @@ export default function AdminPage() {
         {tab === 'overview' && <OverviewTab />}
         {tab === 'earnings' && <EarningsTab />}
         {tab === 'approvals' && <ApprovalsTab />}
+        {tab === 'rejected' && <RejectedTab />}
         {tab === 'cancellations' && <CancellationsTab />}
         {tab === 'users' && <UsersTab />}
         {tab === 'bookings' && <BookingsTab />}

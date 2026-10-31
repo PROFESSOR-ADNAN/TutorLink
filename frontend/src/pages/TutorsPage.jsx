@@ -239,7 +239,7 @@ export default function TutorsPage() {
                 </div>
 
                 <div>
-                  <label className="label text-xs">Rate (USD/hr)</label>
+                  <label className="label text-xs">Rate (ETB/hr)</label>
                   <div className="flex gap-2">
                     <input type="number" placeholder="Min" className="input text-sm py-2 w-1/2" min="0"
                       value={filters.minRate} onChange={e => setFilters({ ...filters, minRate: e.target.value })} />

@@ -2,9 +2,11 @@ const crypto = require("crypto");
 const chapa = require("../config/chapa");
 const Booking = require("../models/Booking.model");
 const Tutor = require("../models/Tutor.model");
+const Review = require("../models/Review.model");
 const { AppError } = require("../middleware/error.middleware");
 const { sendEmail } = require("../utils/email");
 const catchAsync = require("../utils/catchAsync");
+const { releaseTutorPayout } = require("./payment.controller");
 
 // ─── Booking guard rules (tunable without touching logic below) ──────
 // How long an unpaid booking holds a tutor's slot before it's treated as
@@ -232,8 +234,20 @@ exports.getMyBookings = catchAsync(async (req, res, next) => {
     Booking.countDocuments(filter),
   ]);
 
+  // Students see which completed sessions they've already reviewed, so the
+  // dashboard can show "Write a review" only where it's actually needed.
+  let reviewedBookingIds = new Set();
+  if (req.user.role === "student") {
+    const reviewed = await Review.find({ student: req.user._id }).distinct("booking");
+    reviewedBookingIds = new Set(reviewed.map((id) => id.toString()));
+  }
+  const bookingsWithReviewFlag = bookings.map((b) => ({
+    ...b.toObject(),
+    hasReview: reviewedBookingIds.has(b._id.toString()),
+  }));
+
   res.status(200).json({
-    bookings,
+    bookings: bookingsWithReviewFlag,
     pagination: { page: Number(page), limit: Number(limit), total },
   });
 });
@@ -328,6 +342,19 @@ exports.updateBookingStatus = catchAsync(async (req, res, next) => {
   if (req.body.tutorNotes) booking.tutorNotes = req.body.tutorNotes;
   if (req.body.sessionSummary) booking.sessionSummary = req.body.sessionSummary;
   await booking.save();
+
+  // The tutor's share is held until the session is actually confirmed
+  // complete — release it now. Failure here doesn't block completion
+  // itself (the session did happen); it just leaves payoutStatus as
+  // 'failed' for an admin to retry, rather than the tutor/student stuck
+  // unable to mark the session done because of an unrelated bank error.
+  if (status === "completed") {
+    try {
+      await releaseTutorPayout(booking);
+    } catch (err) {
+      console.error(`Failed to release payout for booking ${booking._id}:`, err.message);
+    }
+  }
 
   res.status(200).json({ booking });
 });

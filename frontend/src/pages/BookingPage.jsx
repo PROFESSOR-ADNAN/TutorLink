@@ -5,6 +5,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import Avatar from '../components/ui/Avatar';
 import ChapaCheckout from '../components/ChapaCheckout';
+import { toEthiopianTime } from '../utils/ethiopianTime';
 
 const DURATIONS = [
   { value: 30, label: '30 min' },
@@ -233,13 +234,14 @@ export default function BookingPage() {
                       key={t}
                       type="button"
                       onClick={() => setForm({ ...form, time: t })}
-                      className={`py-2 rounded-xl text-sm font-medium border transition ${
+                      className={`py-2 rounded-xl text-sm font-medium border transition flex flex-col items-center ${
                         form.time === t
                           ? 'bg-forest-800 text-white border-forest-800'
                           : 'bg-surface text-ink-600 border-canvas-300 hover:border-forest-300'
                       }`}
                     >
-                      {t}
+                      <span>{toEthiopianTime(t)}</span>
+                      <span className={`text-[10px] ${form.time === t ? 'text-white/70' : 'text-ink-400'}`}>{t}</span>
                     </button>
                   ))}
                 </div>

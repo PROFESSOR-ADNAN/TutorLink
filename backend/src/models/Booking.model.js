@@ -53,7 +53,21 @@ const bookingSchema = new mongoose.Schema(
       // subaccount `split_value` — these fields are our own bookkeeping
       // record of what that split represents, for reporting.
       platformFeeAmount: { type: Number, default: 0 }, // ETB kept by TutorLink
-      tutorPayoutAmount: { type: Number, default: 0 }, // ETB settled to the tutor's subaccount
+      tutorPayoutAmount: { type: Number, default: 0 }, // ETB owed to the tutor
+      // The tutor's share is deliberately NOT sent automatically when the
+      // student pays — it's held until the session is actually marked
+      // completed, then transferred (see releaseTutorPayout in
+      // payment.controller.js). 'not_due' before that point, 'pending'
+      // while a transfer is in flight, 'released' once Chapa confirms it,
+      // 'failed' if the attempt errored (safe to retry).
+      payoutStatus: {
+        type: String,
+        enum: ['not_due', 'pending', 'released', 'failed'],
+        default: 'not_due',
+      },
+      payoutReference: String,
+      payoutError: String,
+      payoutReleasedAt: Date,
       paidAt: Date,
       refundedAt: Date,
     },
@@ -115,8 +129,8 @@ bookingSchema.virtual('endsAt').get(function () {
 // ─── Post-save hook: increment tutor session count ────────
 bookingSchema.post('save', async function () {
   if (this.status === 'completed' && this.isModified('status')) {
-    await mongoose.model('Tutor').findOneAndUpdate(
-      { user: this.tutor },
+    await mongoose.model('Tutor').findByIdAndUpdate(
+      this.tutor,
       { $inc: { totalSessions: 1 } }
     );
   }

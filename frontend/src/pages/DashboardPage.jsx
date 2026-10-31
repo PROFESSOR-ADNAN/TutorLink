@@ -14,6 +14,7 @@ import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { SkeletonRows } from '../components/ui/Skeleton';
 import GradientHero from '../components/ui/GradientHero';
+import { toEthiopianTimeFromDate } from '../utils/ethiopianTime';
 
 const STATUS_CONFIG = {
   pending: { label: 'Awaiting payment', variant: 'warning' },
@@ -74,7 +75,10 @@ function BookingDetailsModal({ booking, onClose }) {
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Date & time</p>
-              <p className="text-sm text-ink-900">{format(new Date(booking.scheduledAt), 'MMM d, yyyy · h:mm a')}</p>
+              <p className="text-sm text-ink-900">
+                {format(new Date(booking.scheduledAt), 'MMM d, yyyy')} · {toEthiopianTimeFromDate(booking.scheduledAt)}
+                <span className="text-ink-400"> ({format(new Date(booking.scheduledAt), 'h:mm a')})</span>
+              </p>
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-400 mb-1">Duration</p>
@@ -199,6 +203,79 @@ function RequestCancellationDialog({ booking, isTutor, onSubmit, onClose, loadin
   );
 }
 
+function StarPicker({ value, onChange }) {
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          className="text-3xl leading-none transition-transform hover:scale-110"
+          style={{ color: n <= value ? 'rgb(var(--brand-gold))' : 'rgb(var(--canvas-400))' }}
+          aria-label={`${n} star${n > 1 ? 's' : ''}`}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ReviewDialog({ booking, onClose, onSubmitted }) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const tutorName = booking.tutor?.user?.name;
+
+  const submit = async () => {
+    if (!comment.trim()) return toast.error('Please add a few words about your session');
+    setSubmitting(true);
+    try {
+      await api.post('/reviews', { bookingId: booking._id, rating, comment: comment.trim() });
+      toast.success('Review submitted — thank you!');
+      onSubmitted();
+    } catch (err) {
+      toast.error(err.message || 'Failed to submit review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="bg-surface w-full max-w-sm rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-serif text-lg text-ink-900 mb-1">How was your session?</h3>
+        <p className="text-sm text-ink-500 mb-4">
+          {booking.subject} with {tutorName}
+        </p>
+
+        <div className="flex justify-center mb-4">
+          <StarPicker value={rating} onChange={setRating} />
+        </div>
+
+        <textarea
+          className="input resize-none mb-4"
+          rows={4}
+          placeholder={`What did you think of ${tutorName ? tutorName.split(' ')[0] : 'your tutor'}'s teaching?`}
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          maxLength={1000}
+        />
+
+        <div className="flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={onClose} disabled={submitting}>
+            Later
+          </Button>
+          <Button className="flex-1" onClick={submit} loading={submitting}>
+            Submit review
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function BookingRow({ booking, onUpdate, onViewDetails }) {
   const { user } = useAuthStore();
   const isTutor = user?.role === 'tutor';
@@ -209,6 +286,7 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
   const [cancelling, setCancelling] = useState(false);
   const [requestingCancellation, setRequestingCancellation] = useState(false);
   const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
 
   // Only allow joining starting 10 minutes before the scheduled time
   const canJoin =
@@ -274,7 +352,7 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
         <div className="text-sm text-ink-600 flex-shrink-0">
           <div className="font-medium">{format(new Date(booking.scheduledAt), 'MMM d, yyyy')}</div>
           <div className="text-xs text-ink-400">
-            {format(new Date(booking.scheduledAt), 'h:mm a')} · {booking.duration}min
+            {toEthiopianTimeFromDate(booking.scheduledAt)} ({format(new Date(booking.scheduledAt), 'h:mm a')}) · {booking.duration}min
           </div>
         </div>
 
@@ -306,6 +384,15 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
             <Button size="sm" variant="secondary" onClick={() => update('completed')}>
               Complete
             </Button>
+          )}
+
+          {!isTutor && booking.status === 'completed' && !booking.hasReview && (
+            <Button size="sm" onClick={() => setReviewing(true)}>
+              Write a review
+            </Button>
+          )}
+          {!isTutor && booking.status === 'completed' && booking.hasReview && (
+            <span className="text-xs text-ink-400 italic px-1">✓ Reviewed</span>
           )}
 
           {booking.status === 'confirmed' &&
@@ -375,6 +462,17 @@ function BookingRow({ booking, onUpdate, onViewDetails }) {
           loading={submittingRequest}
           onSubmit={submitCancellationRequest}
           onClose={() => setRequestingCancellation(false)}
+        />
+      )}
+
+      {reviewing && (
+        <ReviewDialog
+          booking={booking}
+          onClose={() => setReviewing(false)}
+          onSubmitted={() => {
+            setReviewing(false);
+            onUpdate();
+          }}
         />
       )}
     </>

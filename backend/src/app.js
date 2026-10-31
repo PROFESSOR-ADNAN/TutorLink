@@ -1,4 +1,8 @@
-// dotenv is loaded in server.js before this module is required
+// Load environment variables if not already loaded
+if (!process.env.MONGO_URI) {
+  require("dotenv").config();
+}
+
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -6,6 +10,7 @@ const morgan = require("morgan");
 const mongoSanitize = require("express-mongo-sanitize");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
+const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
@@ -26,13 +31,47 @@ const app = express();
 // Helmet sets secure HTTP headers (prevents XSS, clicking, etc.)
 app.use(helmet());
 
-// CORS — only allow our React frontend to talk to this API
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
-    credentials: true, // allow cookies to be sent cross-origin
-  }),
-);
+// CORS — dynamic origin verification supporting custom domains, Vercel previews & localhost
+const explicitOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://tutor-link-2yxy.vercel.app",
+]
+  .filter(Boolean)
+  .flatMap((url) => url.split(",").map((s) => s.trim().replace(/\/$/, "")));
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+
+    const normalizedOrigin = origin.replace(/\/$/, "");
+
+    // Check if in explicit allowed origins
+    if (explicitOrigins.includes(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    // Allow any Vercel deployment preview / branch URL (*.vercel.app)
+    if (/^https:\/\/[a-zA-Z0-9_.-]+\.vercel\.app$/.test(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    // In local development, allow any localhost port
+    if (process.env.NODE_ENV !== "production" && /^http:\/\/localhost:\d+$/.test(normalizedOrigin)) {
+      return callback(null, true);
+    }
+
+    callback(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 // Rate limiting — prevents brute-force and DoS attacks
 // Allows 100 requests per 15 minutes per IP
@@ -57,10 +96,6 @@ app.use("/api/auth", authLimiter);
 // PARSING & LOGGING
 // ──────────────────────────────────────────────────────────
 
-// Note: Chapa's webhook signs the already-parsed JSON body (not the raw
-// bytes the way Stripe did), so it doesn't need the special raw-body
-// middleware a Stripe webhook would — normal express.json() below is fine.
-
 // Parse JSON bodies (limit 10kb prevents payload-size attacks)
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true, limit: "10kb" }));
@@ -75,8 +110,50 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // ──────────────────────────────────────────────────────────
+// DATABASE CONNECTION MIDDLEWARE (SERVERLESS COMPATIBLE)
+// ──────────────────────────────────────────────────────────
+// Ensures MongoDB connection is established before any database queries execute.
+// Prevents Mongoose buffering timeout errors in serverless environments.
+app.use(async (req, res, next) => {
+  // Skip DB check for health and root routes
+  if (req.path === "/" || req.path === "/api/v1/health" || req.path === "/health") {
+    return next();
+  }
+
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error("MongoDB Connection Middleware Error:", err.message);
+    return res.status(503).json({
+      status: "error",
+      message: "Database connection failed. Check your MONGO_URI and ensure MongoDB Atlas allows access from all IPs (0.0.0.0/0).",
+      details: process.env.NODE_ENV === "development" ? err.message : undefined,
+    });
+  }
+});
+
+// ──────────────────────────────────────────────────────────
 // ROUTES
 // ──────────────────────────────────────────────────────────
+app.get("/", (req, res) => {
+  res.json({
+    name: "TutorLink API",
+    status: "ok",
+    environment: process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: "/api/v1/health",
+      auth: "/api/v1/auth",
+      users: "/api/v1/users",
+      tutors: "/api/v1/tutors",
+      bookings: "/api/v1/bookings",
+      reviews: "/api/v1/reviews",
+      payments: "/api/v1/payments",
+    },
+  });
+});
+
 app.get("/api/v1/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });

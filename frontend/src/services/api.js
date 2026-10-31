@@ -8,7 +8,7 @@ const api = axios.create({
 });
 
 
-// ✅ Add interceptors to set Content-Type dynamically
+// ✅ Add interceptors to set Content-Type and Authorization dynamically
 api.interceptors.request.use((config) => {
   // If the data is FormData, let axios set the Content-Type automatically
   if (config.data instanceof FormData) {
@@ -18,6 +18,17 @@ api.interceptors.request.use((config) => {
     // For JSON requests, set Content-Type to application/json
     config.headers['Content-Type'] = 'application/json';
   }
+
+  // Attach token from localStorage if available (acts as fallback if third-party cookies are blocked)
+  try {
+    const token = localStorage.getItem('token');
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (err) {
+    // Ignore localStorage access errors (e.g. sandboxed iframes)
+  }
+
   return config;
 });
 
@@ -46,6 +57,9 @@ api.interceptors.response.use(
     const isSessionInvalid = error.response?.data?.code === "SESSION_INVALID";
 
     if (isSessionInvalid && useAuthStore.getState().isAuthenticated) {
+      try {
+        localStorage.removeItem('token');
+      } catch (err) {}
       useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
       if (!window.location.pathname.startsWith("/login")) {
         window.location.href = "/login?sessionExpired=1";
