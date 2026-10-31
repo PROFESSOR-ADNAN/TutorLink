@@ -24,6 +24,9 @@ const { errorHandler, notFound } = require("./middleware/error.middleware");
 
 const app = express();
 
+// Trust reverse proxy (Vercel Edge Network) so req.ip is correct and rate limiting works accurately
+app.set("trust proxy", 1);
+
 // ──────────────────────────────────────────────────────────
 // SECURITY MIDDLEWARE
 // ──────────────────────────────────────────────────────────
@@ -115,10 +118,11 @@ if (process.env.NODE_ENV === "development") {
 // Ensures MongoDB connection is established before any database queries execute.
 // Prevents Mongoose buffering timeout errors in serverless environments.
 app.use(async (req, res, next) => {
-  // Skip DB check for health, favicon, and root routes
+  // Skip DB check for health, favicon, socket.io polling, and root routes
   if (
     req.path === "/" ||
     req.path === "/favicon.ico" ||
+    req.path.startsWith("/socket.io") ||
     req.path === "/health" ||
     req.path === "/api/health" ||
     req.path === "/api/v1/health"

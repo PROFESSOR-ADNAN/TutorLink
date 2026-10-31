@@ -334,16 +334,32 @@ const templates = {
 };
 
 // ─── Transporter ────────────────────────────────────────────
-const createTransporter = () =>
-  nodemailer.createTransport({
+const getEmailPort = () => {
+  const configuredPort = Number(process.env.EMAIL_PORT);
+  // Port 25 is blocked by AWS / Vercel cloud network firewalls.
+  // Fall back to 2525 (for Mailtrap) or 587 (standard STARTTLS).
+  if (!configuredPort || configuredPort === 25) {
+    return process.env.EMAIL_HOST?.includes("mailtrap") ? 2525 : 587;
+  }
+  return configuredPort;
+};
+
+const createTransporter = () => {
+  const port = getEmailPort();
+  return nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: Number(process.env.EMAIL_PORT),
-    secure: Number(process.env.EMAIL_PORT) === 465, // true for port 465, false for 587
+    port,
+    secure: port === 465, // true for port 465 (SSL), false for 587 / 2525 (STARTTLS)
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    // Set fast timeouts so an SMTP failure never hangs the HTTP response
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 10000,
   });
+};
 
 // ─── Send Email ─────────────────────────────────────────────
 exports.sendEmail = async ({ to, subject, template, data }) => {
