@@ -115,8 +115,14 @@ if (process.env.NODE_ENV === "development") {
 // Ensures MongoDB connection is established before any database queries execute.
 // Prevents Mongoose buffering timeout errors in serverless environments.
 app.use(async (req, res, next) => {
-  // Skip DB check for health and root routes
-  if (req.path === "/" || req.path === "/api/v1/health" || req.path === "/health") {
+  // Skip DB check for health, favicon, and root routes
+  if (
+    req.path === "/" ||
+    req.path === "/favicon.ico" ||
+    req.path === "/health" ||
+    req.path === "/api/health" ||
+    req.path === "/api/v1/health"
+  ) {
     return next();
   }
 
@@ -154,10 +160,15 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/api/v1/health", (req, res) => {
+const healthHandler = (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
+};
 
+app.get("/api/v1/health", healthHandler);
+app.get("/api/health", healthHandler);
+app.get("/health", healthHandler);
+
+// 1. Primary /api/v1/ prefix
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/bookings", bookingRoutes);
@@ -166,6 +177,27 @@ app.use("/api/v1/reviews", reviewRoutes);
 app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/admin", adminRoutes);
+
+// 2. /api/ prefix
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/tutors", tutorRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/admin", adminRoutes);
+
+// 3. Direct root mounts (/auth, /tutors, etc.)
+// Ensures requests succeed even if VITE_API_URL is configured without the /api/v1 suffix
+app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
+app.use("/bookings", bookingRoutes);
+app.use("/tutors", tutorRoutes);
+app.use("/reviews", reviewRoutes);
+app.use("/chat", chatRoutes);
+app.use("/payments", paymentRoutes);
+app.use("/admin", adminRoutes);
 
 // ──────────────────────────────────────────────────────────
 // ERROR HANDLING

@@ -5,6 +5,38 @@
       "destination": "https://tutor-link-three.vercel.app/api/v1/:path*"
     },
     {
+      "source": "/api/:path*",
+      "destination": "https://tutor-link-three.vercel.app/api/:path*"
+    },
+    {
+      "source": "/auth/:path*",
+      "destination": "https://tutor-link-three.vercel.app/auth/:path*"
+    },
+    {
+      "source": "/tutors/:path*",
+      "destination": "https://tutor-link-three.vercel.app/tutors/:path*"
+    },
+    {
+      "source": "/bookings/:path*",
+      "destination": "https://tutor-link-three.vercel.app/bookings/:path*"
+    },
+    {
+      "source": "/users/:path*",
+      "destination": "https://tutor-link-three.vercel.app/users/:path*"
+    },
+    {
+      "source": "/reviews/:path*",
+      "destination": "https://tutor-link-three.vercel.app/reviews/:path*"
+    },
+    {
+      "source": "/payments/:path*",
+      "destination": "https://tutor-link-three.vercel.app/payments/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://tutor-link-three.vercel.app/health"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
