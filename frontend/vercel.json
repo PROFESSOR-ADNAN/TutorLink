@@ -2,39 +2,39 @@
   "rewrites": [
     {
       "source": "/api/v1/:path*",
-      "destination": "https://tutor-link-three.vercel.app/api/v1/:path*"
+      "destination": "https://tutorlink-backend-7uqu.onrender.com/api/v1/:path*"
     },
     {
       "source": "/api/:path*",
-      "destination": "https://tutor-link-three.vercel.app/api/:path*"
+      "destination": "https://tutorlink-backend-7uqu.onrender.com/api/:path*"
     },
     {
       "source": "/auth/:path*",
-      "destination": "https://tutor-link-three.vercel.app/auth/:path*"
+      "destination": "https://tutorlink-backend-7uqu.onrender.com/auth/:path*"
     },
     {
       "source": "/tutors/:path*",
-      "destination": "https://tutor-link-three.vercel.app/tutors/:path*"
+      "destination": "https://tutorlink-backend-7uqu.onrender.com/tutors/:path*"
     },
     {
       "source": "/bookings/:path*",
-      "destination": "https://tutor-link-three.vercel.app/bookings/:path*"
+      "destination": "https://tutorlink-backend-7uqu.onrender.com/bookings/:path*"
     },
     {
       "source": "/users/:path*",
-      "destination": "https://tutor-link-three.vercel.app/users/:path*"
+      "destination": "https://tutorlink-backend-7uqu.onrender.com/users/:path*"
     },
     {
       "source": "/reviews/:path*",
-      "destination": "https://tutor-link-three.vercel.app/reviews/:path*"
+      "destination": "https://tutorlink-backend-7uqu.onrender.com/reviews/:path*"
     },
     {
       "source": "/payments/:path*",
-      "destination": "https://tutor-link-three.vercel.app/payments/:path*"
+      "destination": "https://tutorlink-backend-7uqu.onrender.com/payments/:path*"
     },
     {
       "source": "/health",
-      "destination": "https://tutor-link-three.vercel.app/health"
+      "destination": "https://tutorlink-backend-7uqu.onrender.com/health"
     },
     {
       "source": "/(.*)",

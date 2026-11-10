@@ -1,4 +1,6 @@
 // Load .env FIRST — before any other require that reads process.env
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config();
 
 const http = require('http');

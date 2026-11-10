@@ -1,5 +1,7 @@
 // Load environment variables if not already loaded
+const path = require("path");
 if (!process.env.MONGO_URI) {
+  require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
   require("dotenv").config();
 }
 

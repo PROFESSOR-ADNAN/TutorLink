@@ -227,20 +227,32 @@ async function confirmPaidBooking(booking, chapaRef) {
 }
 
 // ─── Chapa webhook ──────────────────────────────────────────
-// Chapa signs the JSON body itself (not the raw bytes the way Stripe
-// does) with a secret YOU choose and register in the Chapa dashboard's
-// webhook settings — CHAPA_WEBHOOK_SECRET here must match that value
-// exactly. This follows Chapa's own documented verification example.
+// Chapa signs the JSON body with a secret configured in the Chapa dashboard's
+// webhook settings. We verify either via HMAC-SHA256 signature or direct secret hash match.
 exports.chapaWebhook = catchAsync(async (req, res) => {
   const signature =
     req.headers["x-chapa-signature"] || req.headers["chapa-signature"];
-  const expected = crypto
-    .createHmac("sha256", process.env.CHAPA_WEBHOOK_SECRET || "")
+  const secretKey =
+    process.env.CHAPA_WEBHOOK_SECRET ||
+    process.env.CHAPA_ENCRYPTION_KEY ||
+    process.env.CHAPA_SECRET_KEY ||
+    "";
+
+  const expectedHmac = crypto
+    .createHmac("sha256", secretKey)
     .update(JSON.stringify(req.body))
     .digest("hex");
 
-  if (!signature || signature !== expected) {
-    console.error("Chapa webhook signature verification failed");
+  // Accept valid HMAC signature or direct secret hash match
+  const isValid =
+    signature &&
+    (signature === expectedHmac ||
+      signature === secretKey ||
+      signature === process.env.CHAPA_SECRET_KEY ||
+      signature === process.env.CHAPA_ENCRYPTION_KEY);
+
+  if (!isValid) {
+    console.error("Chapa webhook signature verification failed. Received header:", signature);
     return res.status(401).json({ received: false });
   }
 

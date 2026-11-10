@@ -4,16 +4,16 @@ import useAuthStore from '../context/authStore';
 
 const SocketContext = createContext(null);
 
-// Derive the Socket.IO server URL from the API URL so we only need to
-// configure one env var, e.g. VITE_API_URL=https://api.example.com/api/v1
-// -> socket connects to https://api.example.com
+// Derive the Socket.IO server URL from the API URL or fallback to the Render backend
 const getSocketUrl = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
-  if (!apiUrl) return window.location.origin; // same-origin (works behind the nginx proxy in prod)
+  if (!apiUrl) {
+    // In local development, use same origin (vite proxy). In production, connect directly to Render.
+    return window.location.hostname.includes('localhost')
+      ? window.location.origin
+      : 'https://tutorlink-backend-7uqu.onrender.com';
+  }
   try {
-    // Passing window.location.origin as the base makes this work for both
-    // absolute URLs (https://api.example.com/api/v1) and relative ones
-    // (/api/v1), instead of throwing on the relative case.
     return new URL(apiUrl, window.location.origin).origin;
   } catch {
     return window.location.origin;
